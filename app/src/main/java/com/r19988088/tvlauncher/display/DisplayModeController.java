@@ -10,6 +10,14 @@ public final class DisplayModeController {
     private DisplayModeController() {}
 
     public static void requestBestMode(Window window) {
+        try {
+            requestBestModeInternal(window);
+        } catch (RuntimeException ignored) {
+            // Broken vendor display services must not prevent the HOME activity from starting.
+        }
+    }
+
+    private static void requestBestModeInternal(Window window) {
         Display display = window.getWindowManager().getDefaultDisplay();
         Display.Mode current = display.getMode();
         Display.Mode[] supported = display.getSupportedModes();
@@ -31,12 +39,8 @@ public final class DisplayModeController {
         if (selected.id() == current.getModeId()) {
             return;
         }
-        try {
-            WindowManager.LayoutParams attributes = window.getAttributes();
-            attributes.preferredDisplayModeId = selected.id();
-            window.setAttributes(attributes);
-        } catch (RuntimeException ignored) {
-            // The vendor display service may reject third-party mode requests.
-        }
+        WindowManager.LayoutParams attributes = window.getAttributes();
+        attributes.preferredDisplayModeId = selected.id();
+        window.setAttributes(attributes);
     }
 }

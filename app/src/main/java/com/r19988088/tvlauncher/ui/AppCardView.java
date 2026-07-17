@@ -126,7 +126,8 @@ public final class AppCardView extends FrameLayout {
             imageView.setScaleX(state.scale());
             imageView.setScaleY(state.scale());
             imageView.setTranslationY(translationY);
-            imageView.setElevation(elevation);
+            imageView.setElevation(dp(1));
+            imageView.setTranslationZ(Math.max(0f, elevation - dp(1)));
             labelView.setAlpha(state.labelAlpha());
             return;
         }
@@ -134,11 +135,12 @@ public final class AppCardView extends FrameLayout {
                 .scaleX(state.scale())
                 .scaleY(state.scale())
                 .translationY(translationY)
+                .translationZ(Math.max(0f, elevation - dp(1)))
                 .setDuration(ANIMATION_DURATION_MS)
                 .setInterpolator(FOCUS_INTERPOLATOR)
                 .withLayer()
                 .start();
-        imageView.setElevation(elevation);
+        imageView.setElevation(dp(1));
         labelView.animate()
                 .alpha(state.labelAlpha())
                 .setDuration(ANIMATION_DURATION_MS)
@@ -150,4 +152,3 @@ public final class AppCardView extends FrameLayout {
         return Math.round(value * density);
     }
 }
-

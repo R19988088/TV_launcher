@@ -17,6 +17,6 @@
     <string name="percent_value">%1$d%%</string>
     <string-array name="app_actions">
         <item>移动</item>
-        <item>隐藏</item>
+        <item>屏蔽显示</item>
     </string-array>
 </resources>

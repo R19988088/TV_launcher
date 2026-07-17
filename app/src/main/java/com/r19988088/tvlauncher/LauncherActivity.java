@@ -54,6 +54,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private List<AppEntry> entries = new ArrayList<>();
     private ReorderSession reorderSession;
     private int loadGeneration;
+    private int wallpaperLoadGeneration;
     private Bitmap customWallpaper;
     private boolean packageReceiverRegistered;
     private final BroadcastReceiver packageReceiver = new BroadcastReceiver() {
@@ -196,6 +197,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     @Override
     protected void onDestroy() {
         loadGeneration++;
+        wallpaperLoadGeneration++;
         repositoryExecutor.shutdownNow();
         bannerLoader.close();
         if (customWallpaper != null) {
@@ -359,18 +361,18 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private void loadWallpaper() {
+        final int generation = ++wallpaperLoadGeneration;
         String uriText = state.wallpaperUri();
         if (uriText.isEmpty()) {
             replaceCustomWallpaper(null);
             wallpaperView.setImageResource(R.drawable.default_wallpaper);
             return;
         }
-        final int generation = loadGeneration;
         final Uri uri = Uri.parse(uriText);
         repositoryExecutor.execute(() -> {
             final Bitmap decoded = decodeWallpaper(uri);
             mainHandler.post(() -> {
-                if (generation != loadGeneration || isFinishing()) {
+                if (generation != wallpaperLoadGeneration || isFinishing()) {
                     if (decoded != null) {
                         decoded.recycle();
                     }
@@ -390,6 +392,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         try (InputStream input = getContentResolver().openInputStream(uri)) {
+            if (input == null) {
+                return null;
+            }
             BitmapFactory.decodeStream(input, null, bounds);
         } catch (IOException | SecurityException ignored) {
             return null;
@@ -402,6 +407,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         options.inSampleSize = sample;
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         try (InputStream input = getContentResolver().openInputStream(uri)) {
+            if (input == null) {
+                return null;
+            }
             return BitmapFactory.decodeStream(input, null, options);
         } catch (IOException | SecurityException ignored) {
             return null;

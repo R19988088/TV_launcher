@@ -108,7 +108,6 @@
             android:choiceMode="multipleChoice"
             android:divider="#24FFFFFF"
             android:dividerHeight="1dp"
-            android:listSelector="@android:color/transparent"
             android:scrollbars="none" />
 
         <ProgressBar
@@ -118,4 +117,3 @@
             android:layout_gravity="center" />
     </FrameLayout>
 </LinearLayout>
-
