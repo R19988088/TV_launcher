@@ -11,6 +11,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace 'com.r19988088.tvlauncher'
     compileSdk 36
+    testBuildType 'release'
 
     defaultConfig {
         applicationId 'com.r19988088.tvlauncher'
@@ -71,4 +72,3 @@ tasks.configureEach { task ->
         }
     }
 }
-
