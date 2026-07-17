@@ -12,7 +12,6 @@ import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -43,16 +42,28 @@ public final class AppRepository {
     }
 
     public List<AppEntry> resolveOrdered(List<String> componentIds) {
-        List<AppEntry> discovered = discoverLaunchableApps();
-        Map<String, AppEntry> byId = new HashMap<>();
-        for (AppEntry entry : discovered) {
-            byId.put(entry.componentId(), entry);
-        }
         List<AppEntry> ordered = new ArrayList<>();
         for (String componentId : componentIds) {
-            AppEntry entry = byId.get(componentId);
-            if (entry != null) {
-                ordered.add(entry);
+            ComponentName component = ComponentName.unflattenFromString(componentId);
+            if (component == null || ownPackageName.equals(component.getPackageName())) {
+                continue;
+            }
+            try {
+                ActivityInfo activity = packageManager.getActivityInfo(component, 0);
+                if (!activity.enabled
+                        || activity.applicationInfo == null
+                        || !activity.applicationInfo.enabled
+                        || !activity.exported) {
+                    continue;
+                }
+                CharSequence loadedLabel = activity.loadLabel(packageManager);
+                String label = loadedLabel == null
+                        ? activity.packageName
+                        : loadedLabel.toString();
+                ordered.add(new AppEntry(
+                        component, label, lastUpdateTime(component.getPackageName())));
+            } catch (PackageManager.NameNotFoundException ignored) {
+                // Removed components are omitted and cleaned from preferences by the caller.
             }
         }
         return ordered;
@@ -73,6 +84,7 @@ public final class AppRepository {
             if (activity == null
                     || !activity.enabled
                     || !activity.applicationInfo.enabled
+                    || !activity.exported
                     || ownPackageName.equals(activity.packageName)) {
                 continue;
             }
@@ -97,4 +109,3 @@ public final class AppRepository {
         }
     }
 }
-

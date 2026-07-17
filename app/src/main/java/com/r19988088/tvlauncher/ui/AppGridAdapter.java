@@ -4,9 +4,11 @@ import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import com.r19988088.tvlauncher.image.BannerCacheKey;
 import com.r19988088.tvlauncher.image.BannerLoader;
 import com.r19988088.tvlauncher.model.AppEntry;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class AppGridAdapter extends BaseAdapter {
@@ -51,6 +53,14 @@ public final class AppGridAdapter extends BaseAdapter {
         return new ArrayList<>(entries);
     }
 
+    public void swap(int from, int to) {
+        Collections.swap(entries, from, to);
+    }
+
+    public void bindView(int position, AppCardView card) {
+        bindCard(position, card);
+    }
+
     @Override
     public int getCount() {
         return entries.size();
@@ -76,9 +86,20 @@ public final class AppGridAdapter extends BaseAdapter {
         final AppCardView card = recycled instanceof AppCardView
                 ? (AppCardView) recycled
                 : new AppCardView(context);
+        bindCard(position, card);
+        return card;
+    }
+
+    private void bindCard(int position, final AppCardView card) {
         final AppEntry entry = getItem(position);
+        final String requestKey = new BannerCacheKey(
+                entry.componentId(),
+                entry.lastUpdateTime(),
+                cardWidth,
+                cardHeight,
+                iconScalePercent).fileName();
         card.configure(cardWidth, cardHeight);
-        card.bind(entry.componentId(), entry.label());
+        card.bind(entry.componentId(), requestKey, entry.label());
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -94,10 +115,12 @@ public final class AppGridAdapter extends BaseAdapter {
         bannerLoader.load(entry, cardWidth, cardHeight, iconScalePercent,
                 new BannerLoader.Callback() {
                     @Override
-                    public void onLoaded(String componentId, android.graphics.Bitmap bitmap) {
-                        card.setImageIfBound(componentId, bitmap);
+                    public void onLoaded(
+                            String loadedRequestKey,
+                            String componentId,
+                            android.graphics.Bitmap bitmap) {
+                        card.setImageIfBound(loadedRequestKey, componentId, bitmap);
                     }
                 });
-        return card;
     }
 }

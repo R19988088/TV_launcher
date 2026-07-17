@@ -25,6 +25,7 @@ public final class AppCardView extends FrameLayout {
     private final TextView labelView;
     private final float density;
     private String boundComponentId = "";
+    private String boundRequestKey = "";
 
     public AppCardView(Context context) {
         this(context, null);
@@ -103,16 +104,20 @@ public final class AppCardView extends FrameLayout {
         });
     }
 
-    public void bind(String componentId, String label) {
+    public void bind(String componentId, String requestKey, String label) {
         boundComponentId = componentId;
+        boundRequestKey = requestKey;
         labelView.setText(label);
         setContentDescription(label);
         imageView.setImageDrawable(new ColorDrawable(0x992b3540));
         applyVisualState(isFocused() ? CardVisualState.focused() : CardVisualState.unfocused(), false);
     }
 
-    public void setImageIfBound(String componentId, Bitmap bitmap) {
-        if (boundComponentId.equals(componentId) && bitmap != null && !bitmap.isRecycled()) {
+    public void setImageIfBound(String requestKey, String componentId, Bitmap bitmap) {
+        if (boundComponentId.equals(componentId)
+                && boundRequestKey.equals(requestKey)
+                && bitmap != null
+                && !bitmap.isRecycled()) {
             imageView.setImageBitmap(bitmap);
         }
     }

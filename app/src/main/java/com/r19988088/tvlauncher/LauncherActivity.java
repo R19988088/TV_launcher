@@ -26,6 +26,7 @@ import com.r19988088.tvlauncher.display.DisplayModeController;
 import com.r19988088.tvlauncher.image.BannerLoader;
 import com.r19988088.tvlauncher.model.AppEntry;
 import com.r19988088.tvlauncher.model.ReorderSession;
+import com.r19988088.tvlauncher.ui.AppCardView;
 import com.r19988088.tvlauncher.ui.AppGridAdapter;
 import com.r19988088.tvlauncher.ui.LauncherGridView;
 import java.io.IOException;
@@ -40,6 +41,8 @@ import java.util.concurrent.Executors;
 
 @SuppressLint("GestureBackNavigation")
 public final class LauncherActivity extends Activity implements AppGridAdapter.Listener {
+    private static final long REORDER_ANIMATION_DURATION_MS = 160L;
+
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService repositoryExecutor = Executors.newSingleThreadExecutor();
 
@@ -53,6 +56,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private LauncherState state = LauncherState.defaults();
     private List<AppEntry> entries = new ArrayList<>();
     private ReorderSession reorderSession;
+    private boolean moveAnimationRunning;
+    private int moveAnimationGeneration;
     private int loadGeneration;
     private int wallpaperLoadGeneration;
     private Bitmap customWallpaper;
@@ -60,6 +65,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private final BroadcastReceiver packageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            discardMoveSession();
             refreshDesktop();
         }
     };
@@ -102,6 +108,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     protected void onResume() {
         super.onResume();
         enterImmersiveMode();
+        discardMoveSession();
         state = preferences.load();
         configureGrid();
         loadWallpaper();
@@ -229,21 +236,15 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private void applyEntries(List<AppEntry> resolved) {
+        String focusedComponentId = focusedComponentId();
         entries = new ArrayList<>(resolved);
         adapter.replace(entries);
         boolean empty = entries.isEmpty();
         emptyPrompt.setVisibility(empty ? View.VISIBLE : View.GONE);
         gridView.setVisibility(empty ? View.GONE : View.VISIBLE);
         if (!empty) {
-            gridView.post(() -> {
-                gridView.setSelection(0);
-                View first = gridView.getChildAt(0);
-                if (first != null) {
-                    first.requestFocus();
-                } else {
-                    gridView.requestFocus();
-                }
-            });
+            int restoredIndex = indexOf(focusedComponentId);
+            focusPosition(restoredIndex >= 0 ? restoredIndex : 0);
         }
     }
 
@@ -280,6 +281,13 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             cancelMove();
             return true;
         }
+        if (moveAnimationRunning
+                && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                        || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                        || keyCode == KeyEvent.KEYCODE_DPAD_UP
+                        || keyCode == KeyEvent.KEYCODE_DPAD_DOWN)) {
+            return true;
+        }
         int selected = reorderSession.selectedIndex();
         int columns = state.settings().columns();
         int target = selected;
@@ -300,18 +308,15 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                     || keyCode == KeyEvent.KEYCODE_DPAD_UP
                     || keyCode == KeyEvent.KEYCODE_DPAD_DOWN;
         }
+        View selectedView = visibleCardAt(selected);
+        View targetView = visibleCardAt(target);
         reorderSession.swapWith(target);
         Collections.swap(entries, selected, target);
-        adapter.replace(entries);
-        final int focusTarget = target;
-        gridView.post(() -> {
-            gridView.setSelection(focusTarget);
-            int childIndex = focusTarget - gridView.getFirstVisiblePosition();
-            View child = gridView.getChildAt(childIndex);
-            if (child != null) {
-                child.requestFocus();
-            }
-        });
+        adapter.swap(selected, target);
+        if (!animateSwap(selected, target, selectedView, targetView)) {
+            adapter.replace(entries);
+            focusPosition(target);
+        }
         return true;
     }
 
@@ -335,6 +340,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private void cancelMove() {
+        stopMoveAnimation();
         List<String> original = reorderSession.cancel();
         reorderSession = null;
         entries = orderEntries(entries, original);
@@ -356,8 +362,100 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private void openSettings() {
+        discardMoveSession();
         startActivity(new Intent().setClassName(
                 getPackageName(), getPackageName() + ".SettingsActivity"));
+    }
+
+    private boolean animateSwap(int from, int to, View fromView, View toView) {
+        if (!(fromView instanceof AppCardView) || !(toView instanceof AppCardView)) {
+            return false;
+        }
+        AppCardView fromCard = (AppCardView) fromView;
+        AppCardView toCard = (AppCardView) toView;
+        float deltaX = toCard.getLeft() - fromCard.getLeft();
+        float deltaY = toCard.getTop() - fromCard.getTop();
+        final int generation = ++moveAnimationGeneration;
+        moveAnimationRunning = true;
+        fromCard.animate().cancel();
+        toCard.animate().cancel();
+        fromCard.setTranslationX(0f);
+        fromCard.setTranslationY(0f);
+        toCard.setTranslationX(0f);
+        toCard.setTranslationY(0f);
+        fromCard.animate()
+                .translationX(deltaX)
+                .translationY(deltaY)
+                .setDuration(REORDER_ANIMATION_DURATION_MS)
+                .withLayer()
+                .start();
+        toCard.animate()
+                .translationX(-deltaX)
+                .translationY(-deltaY)
+                .setDuration(REORDER_ANIMATION_DURATION_MS)
+                .withLayer()
+                .withEndAction(() -> {
+                    if (generation != moveAnimationGeneration) {
+                        return;
+                    }
+                    moveAnimationRunning = false;
+                    fromCard.setTranslationX(0f);
+                    fromCard.setTranslationY(0f);
+                    toCard.setTranslationX(0f);
+                    toCard.setTranslationY(0f);
+                    gridView.setSelection(to);
+                    toCard.requestFocus();
+                    adapter.bindView(from, fromCard);
+                    adapter.bindView(to, toCard);
+                })
+                .start();
+        return true;
+    }
+
+    private View visibleCardAt(int position) {
+        int childIndex = position - gridView.getFirstVisiblePosition();
+        return childIndex >= 0 && childIndex < gridView.getChildCount()
+                ? gridView.getChildAt(childIndex)
+                : null;
+    }
+
+    private void focusPosition(int position) {
+        gridView.setSelection(position);
+        gridView.post(() -> {
+            View child = visibleCardAt(position);
+            if (child != null) {
+                child.requestFocus();
+            } else {
+                gridView.requestFocus();
+            }
+        });
+    }
+
+    private String focusedComponentId() {
+        int position = gridView == null ? -1 : gridView.getSelectedItemPosition();
+        if (position >= 0 && position < entries.size()) {
+            return entries.get(position).componentId();
+        }
+        return "";
+    }
+
+    private void discardMoveSession() {
+        stopMoveAnimation();
+        reorderSession = null;
+    }
+
+    private void stopMoveAnimation() {
+        moveAnimationRunning = false;
+        moveAnimationGeneration++;
+        if (gridView == null) {
+            return;
+        }
+        for (int index = 0; index < gridView.getChildCount(); index++) {
+            View child = gridView.getChildAt(index);
+            child.animate().cancel();
+            child.setTranslationX(0f);
+            child.setTranslationY(0f);
+        }
     }
 
     private void loadWallpaper() {

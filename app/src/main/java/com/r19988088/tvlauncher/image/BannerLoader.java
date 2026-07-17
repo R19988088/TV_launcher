@@ -16,13 +16,14 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public final class BannerLoader {
     public interface Callback {
-        void onLoaded(String componentId, Bitmap bitmap);
+        void onLoaded(String requestKey, String componentId, Bitmap bitmap);
     }
 
     private static final int MEMORY_CACHE_KB = 12 * 1024;
@@ -32,6 +33,7 @@ public final class BannerLoader {
     private final File diskDirectory;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ThreadPoolExecutor executor;
+    private volatile boolean closed;
     private final LruCache<String, Bitmap> memoryCache = new LruCache<String, Bitmap>(
             MEMORY_CACHE_KB) {
         @Override
@@ -76,34 +78,43 @@ public final class BannerLoader {
                 height,
                 iconScalePercent);
         final String cacheName = key.fileName();
-        Bitmap cached = memoryCache.get(cacheName);
-        if (cached != null && !cached.isRecycled()) {
-            callback.onLoaded(entry.componentId(), cached);
+        if (closed) {
             return;
         }
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                Bitmap bitmap = readDisk(cacheName);
-                if (bitmap == null) {
-                    bitmap = render(entry, width, height, iconScalePercent);
-                    if (bitmap != null) {
-                        writeDisk(cacheName, bitmap);
+        Bitmap cached = memoryCache.get(cacheName);
+        if (cached != null && !cached.isRecycled()) {
+            callback.onLoaded(cacheName, entry.componentId(), cached);
+            return;
+        }
+        try {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    Bitmap bitmap = readDisk(cacheName);
+                    if (bitmap == null) {
+                        bitmap = render(entry, width, height, iconScalePercent);
+                        if (bitmap != null) {
+                            writeDisk(cacheName, bitmap);
+                        }
                     }
-                }
-                if (bitmap == null) {
-                    return;
-                }
-                memoryCache.put(cacheName, bitmap);
-                final Bitmap loaded = bitmap;
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        callback.onLoaded(entry.componentId(), loaded);
+                    if (bitmap == null || closed) {
+                        return;
                     }
-                });
-            }
-        });
+                    memoryCache.put(cacheName, bitmap);
+                    final Bitmap loaded = bitmap;
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!closed) {
+                                callback.onLoaded(cacheName, entry.componentId(), loaded);
+                            }
+                        }
+                    });
+                }
+            });
+        } catch (RejectedExecutionException ignored) {
+            // Activity shutdown won the race after the closed check.
+        }
     }
 
     public void trimMemory(int level) {
@@ -116,6 +127,7 @@ public final class BannerLoader {
     }
 
     public void close() {
+        closed = true;
         executor.shutdownNow();
         memoryCache.evictAll();
     }
