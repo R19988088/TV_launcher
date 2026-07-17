@@ -21,6 +21,7 @@ public final class AppGridAdapter extends BaseAdapter {
     private final BannerLoader bannerLoader;
     private final Listener listener;
     private final List<AppEntry> entries = new ArrayList<>();
+    private int columnWidth;
     private int cardWidth;
     private int cardHeight;
     private int iconScalePercent = 60;
@@ -31,12 +32,15 @@ public final class AppGridAdapter extends BaseAdapter {
         this.listener = listener;
     }
 
-    public void setCardMetrics(int cardWidth, int cardHeight, int iconScalePercent) {
-        if (this.cardWidth == cardWidth
+    public void setCardMetrics(
+            int columnWidth, int cardWidth, int cardHeight, int iconScalePercent) {
+        if (this.columnWidth == columnWidth
+                && this.cardWidth == cardWidth
                 && this.cardHeight == cardHeight
                 && this.iconScalePercent == iconScalePercent) {
             return;
         }
+        this.columnWidth = columnWidth;
         this.cardWidth = cardWidth;
         this.cardHeight = cardHeight;
         this.iconScalePercent = iconScalePercent;
@@ -98,7 +102,7 @@ public final class AppGridAdapter extends BaseAdapter {
                 cardWidth,
                 cardHeight,
                 iconScalePercent).fileName();
-        card.configure(cardWidth, cardHeight);
+        card.configure(columnWidth, cardWidth, cardHeight);
         card.bind(entry.componentId(), requestKey, entry.label());
         card.setOnClickListener(new View.OnClickListener() {
             @Override

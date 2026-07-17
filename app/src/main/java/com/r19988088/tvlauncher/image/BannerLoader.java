@@ -7,6 +7,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -144,6 +146,13 @@ public final class BannerLoader {
         }
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
+        Path roundedCard = new Path();
+        roundedCard.addRoundRect(
+                new RectF(0f, 0f, width, height),
+                height * 0.12f,
+                height * 0.12f,
+                Path.Direction.CW);
+        canvas.clipPath(roundedCard);
         if (banner == null) {
             float hue = Math.abs(entry.componentId().hashCode() % 360);
             canvas.drawColor(Color.HSVToColor(new float[] {hue, 0.42f, 0.36f}));

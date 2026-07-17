@@ -79,12 +79,13 @@ public final class AppCardView extends FrameLayout {
         applyVisualState(CardVisualState.unfocused(), false);
     }
 
-    public void configure(int cardWidth, int cardHeight) {
-        int topMargin = dp(30);
-        int labelHeight = dp(34);
-        int totalHeight = topMargin + cardHeight + dp(14) + labelHeight + dp(22);
+    public void configure(int columnWidth, int cardWidth, int cardHeight) {
+        int topMargin = dp(8);
+        int labelHeight = dp(22);
+        int labelGap = dp(4);
+        int totalHeight = topMargin + cardHeight + labelGap + labelHeight + dp(8);
         setLayoutParams(new AbsListView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, totalHeight));
+                columnWidth, totalHeight));
 
         FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(cardWidth, cardHeight);
         imageParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
@@ -94,7 +95,7 @@ public final class AppCardView extends FrameLayout {
         FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
                 cardWidth + dp(24), labelHeight);
         labelParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        labelParams.topMargin = topMargin + cardHeight + dp(10);
+        labelParams.topMargin = topMargin + cardHeight + labelGap;
         labelView.setLayoutParams(labelParams);
         imageView.post(new Runnable() {
             @Override

@@ -16,6 +16,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,6 +29,7 @@ import com.r19988088.tvlauncher.model.AppEntry;
 import com.r19988088.tvlauncher.model.ReorderSession;
 import com.r19988088.tvlauncher.ui.AppCardView;
 import com.r19988088.tvlauncher.ui.AppGridAdapter;
+import com.r19988088.tvlauncher.ui.GridMetrics;
 import com.r19988088.tvlauncher.ui.LauncherGridView;
 import java.io.IOException;
 import java.io.InputStream;
@@ -253,23 +255,27 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             return;
         }
         int columns = state.settings().columns();
-        int spacing = dp(8);
-        int horizontalPadding = dp(54);
+        GridMetrics metrics = GridMetrics.calculate(
+                gridView.getWidth(),
+                gridView.getHeight(),
+                columns,
+                state.settings().cardScalePercent(),
+                getResources().getDisplayMetrics().density);
         gridView.setNumColumns(columns);
-        gridView.setHorizontalSpacing(spacing);
-        gridView.setVerticalSpacing(dp(8));
+        gridView.setColumnWidth(metrics.columnWidth());
+        gridView.setStretchMode(GridView.STRETCH_SPACING);
+        gridView.setHorizontalSpacing(metrics.horizontalSpacing());
+        gridView.setVerticalSpacing(metrics.verticalSpacing());
         gridView.setPadding(
-                horizontalPadding,
-                Math.round(gridView.getHeight() * 0.27f),
-                horizontalPadding,
-                dp(48));
-        int available = gridView.getWidth() - horizontalPadding * 2 - spacing * (columns - 1);
-        int cellWidth = Math.max(dp(120), available / columns);
-        int baseWidth = Math.max(dp(110), cellWidth - dp(34));
-        int cardWidth = baseWidth * state.settings().cardScalePercent() / 100;
-        int cardHeight = cardWidth * 9 / 16;
+                metrics.horizontalPadding(),
+                metrics.topPadding(),
+                metrics.horizontalPadding(),
+                metrics.verticalSpacing());
         adapter.setCardMetrics(
-                cardWidth, cardHeight, state.settings().iconScalePercent());
+                metrics.columnWidth(),
+                metrics.cardWidth(),
+                metrics.cardHeight(),
+                state.settings().iconScalePercent());
     }
 
     private boolean handleMoveKey(int keyCode) {
@@ -471,14 +477,13 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private void loadWallpaper() {
         final int generation = ++wallpaperLoadGeneration;
         String uriText = state.wallpaperUri();
-        if (uriText.isEmpty()) {
-            replaceCustomWallpaper(null);
-            wallpaperView.setImageResource(R.drawable.default_wallpaper);
-            return;
-        }
-        final Uri uri = Uri.parse(uriText);
+        final Uri uri = uriText.isEmpty() ? null : Uri.parse(uriText);
         repositoryExecutor.execute(() -> {
-            final Bitmap decoded = decodeWallpaper(uri);
+            Bitmap candidate = uri == null ? null : decodeWallpaper(uri);
+            if (candidate == null) {
+                candidate = decodeDefaultWallpaper();
+            }
+            final Bitmap decoded = softenWallpaper(candidate);
             mainHandler.post(() -> {
                 if (generation != wallpaperLoadGeneration || isFinishing()) {
                     if (decoded != null) {
@@ -487,7 +492,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                     return;
                 }
                 if (decoded == null) {
-                    wallpaperView.setImageResource(R.drawable.default_wallpaper);
+                    wallpaperView.setImageDrawable(null);
                 } else {
                     replaceCustomWallpaper(decoded);
                     wallpaperView.setImageBitmap(decoded);
@@ -508,7 +513,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             return null;
         }
         int sample = 1;
-        while (bounds.outWidth / sample > 1920 || bounds.outHeight / sample > 1080) {
+        while (bounds.outWidth / sample > 320 || bounds.outHeight / sample > 320) {
             sample *= 2;
         }
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -522,6 +527,33 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         } catch (IOException | SecurityException ignored) {
             return null;
         }
+    }
+
+    private Bitmap decodeDefaultWallpaper() {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 8;
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        return BitmapFactory.decodeResource(getResources(), R.drawable.default_wallpaper, options);
+    }
+
+    private static Bitmap softenWallpaper(Bitmap source) {
+        if (source == null) {
+            return null;
+        }
+        int longest = Math.max(source.getWidth(), source.getHeight());
+        if (longest <= 160) {
+            return source;
+        }
+        float scale = 160f / longest;
+        Bitmap softened = Bitmap.createScaledBitmap(
+                source,
+                Math.max(1, Math.round(source.getWidth() * scale)),
+                Math.max(1, Math.round(source.getHeight() * scale)),
+                true);
+        if (softened != source) {
+            source.recycle();
+        }
+        return softened;
     }
 
     private void replaceCustomWallpaper(Bitmap replacement) {
