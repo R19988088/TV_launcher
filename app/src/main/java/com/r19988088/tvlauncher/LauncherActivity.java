@@ -4,7 +4,10 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -52,6 +55,13 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private ReorderSession reorderSession;
     private int loadGeneration;
     private Bitmap customWallpaper;
+    private boolean packageReceiverRegistered;
+    private final BroadcastReceiver packageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            refreshDesktop();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,6 +105,31 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         configureGrid();
         loadWallpaper();
         refreshDesktop();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addAction(Intent.ACTION_PACKAGE_REPLACED);
+        filter.addDataScheme("package");
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(packageReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(packageReceiver, filter);
+        }
+        packageReceiverRegistered = true;
+    }
+
+    @Override
+    protected void onStop() {
+        if (packageReceiverRegistered) {
+            unregisterReceiver(packageReceiver);
+            packageReceiverRegistered = false;
+        }
+        super.onStop();
     }
 
     @Override
