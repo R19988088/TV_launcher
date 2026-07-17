@@ -2,5 +2,21 @@
 <resources>
     <string name="app_name">TV Launcher</string>
     <string name="empty_prompt">按菜单键添加应用</string>
+    <string name="launch_failed">应用无法启动</string>
+    <string name="move_hint">方向键移动，确认保存，返回取消</string>
+    <string name="move_saved">位置已保存</string>
+    <string name="move_cancelled">已取消移动</string>
+    <string name="settings_title">桌面设置</string>
+    <string name="columns_title">每行数量</string>
+    <string name="card_size_title">卡片尺寸</string>
+    <string name="icon_size_title">图标尺寸</string>
+    <string name="choose_wallpaper">选择静态壁纸</string>
+    <string name="apps_title">添加到桌面</string>
+    <string name="wallpaper_saved">壁纸已保存</string>
+    <string name="wallpaper_failed">无法读取壁纸</string>
+    <string name="percent_value">%1$d%%</string>
+    <string-array name="app_actions">
+        <item>移动</item>
+        <item>隐藏</item>
+    </string-array>
 </resources>
-
