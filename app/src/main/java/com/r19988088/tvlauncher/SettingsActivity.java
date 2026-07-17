@@ -91,7 +91,7 @@ public final class SettingsActivity extends Activity {
         }
         try {
             getContentResolver().takePersistableUriPermission(
-                    uri, data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
             state = new LauncherState(selectedIds, state.settings(), uri.toString());
             preferences.save(state);
             Toast.makeText(this, R.string.wallpaper_saved, Toast.LENGTH_SHORT).show();
