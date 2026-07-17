@@ -6,4 +6,3 @@
         android:centerColor="@color/launcher_earth"
         android:endColor="@color/launcher_deep" />
 </shape>
-

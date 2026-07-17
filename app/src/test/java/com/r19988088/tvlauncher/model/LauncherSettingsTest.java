@@ -23,4 +23,3 @@ public final class LauncherSettingsTest {
         assertEquals(40, settings.iconScalePercent());
     }
 }
-

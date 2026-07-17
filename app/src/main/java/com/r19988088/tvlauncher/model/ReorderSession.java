@@ -46,4 +46,3 @@ public final class ReorderSession {
         return Collections.unmodifiableList(new ArrayList<>(source));
     }
 }
-

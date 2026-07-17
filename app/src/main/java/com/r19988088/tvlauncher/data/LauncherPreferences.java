@@ -21,4 +21,3 @@ public final class LauncherPreferences {
         preferences.edit().putString(KEY_STATE, LauncherStateCodec.encode(state)).apply();
     }
 }
-

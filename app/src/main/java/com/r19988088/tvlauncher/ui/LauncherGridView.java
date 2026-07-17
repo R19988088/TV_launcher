@@ -56,4 +56,3 @@ public final class LauncherGridView extends GridView {
         return false;
     }
 }
-

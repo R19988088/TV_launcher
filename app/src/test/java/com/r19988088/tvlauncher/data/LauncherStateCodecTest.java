@@ -32,4 +32,3 @@ public final class LauncherStateCodecTest {
         assertEquals("", decoded.wallpaperUri());
     }
 }
-

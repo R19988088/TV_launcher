@@ -62,4 +62,3 @@ public final class BannerCacheKey {
         return Objects.hash(componentId, lastUpdateTime, width, height, iconScalePercent);
     }
 }
-

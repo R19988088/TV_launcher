@@ -25,4 +25,3 @@ public final class CardVisualStateTest {
         assertEquals(0f, state.labelAlpha(), 0.001f);
     }
 }
-

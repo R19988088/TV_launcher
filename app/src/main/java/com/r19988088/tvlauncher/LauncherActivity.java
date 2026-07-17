@@ -142,15 +142,15 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        if (reorderSession != null && isMoveCommandKey(keyCode)) {
+            return event.getAction() != KeyEvent.ACTION_UP || handleMoveKey(keyCode);
+        }
         if (event.getAction() != KeyEvent.ACTION_UP) {
             return super.dispatchKeyEvent(event);
         }
-        int keyCode = event.getKeyCode();
         if (keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_SETTINGS) {
             openSettings();
-            return true;
-        }
-        if (reorderSession != null && handleMoveKey(keyCode)) {
             return true;
         }
         return super.dispatchKeyEvent(event);
@@ -318,6 +318,16 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             focusPosition(target);
         }
         return true;
+    }
+
+    private static boolean isMoveCommandKey(int keyCode) {
+        return keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == KeyEvent.KEYCODE_ENTER
+                || keyCode == KeyEvent.KEYCODE_BACK
+                || keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                || keyCode == KeyEvent.KEYCODE_DPAD_UP
+                || keyCode == KeyEvent.KEYCODE_DPAD_DOWN;
     }
 
     private void beginMove(AppEntry entry) {

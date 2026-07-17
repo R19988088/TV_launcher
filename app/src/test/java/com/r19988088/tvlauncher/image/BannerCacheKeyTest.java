@@ -16,4 +16,3 @@ public final class BannerCacheKeyTest {
         assertEquals(64, base.fileName().length());
     }
 }
-

@@ -28,4 +28,3 @@ public final class DisplayModeSelectorTest {
         assertEquals(1, chosen.id());
     }
 }
-

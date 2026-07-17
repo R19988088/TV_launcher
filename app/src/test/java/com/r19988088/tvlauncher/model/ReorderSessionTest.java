@@ -31,4 +31,3 @@ public final class ReorderSessionTest {
         session.swapWith(2);
     }
 }
-

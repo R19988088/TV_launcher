@@ -18,4 +18,3 @@ adb shell dumpsys display > "$output_dir/display.txt"
 adb shell dumpsys SurfaceFlinger --latency > "$output_dir/surfaceflinger-latency.txt" || true
 
 echo "Performance evidence saved to $output_dir"
-
