@@ -8,6 +8,8 @@
 
 **技术栈：** Java 17、Android View/XML、API 23-36、AGP 9.3.0、Gradle 9.6.1、JUnit 4、R8、GitHub Actions。
 
+**执行约束：** 用户明确要求本地不编译。本计划中的 Gradle 测试、lint、assemble、R8 和签名验证全部由 GitHub Actions 执行；本地只编辑文件、运行不涉及 Android 编译的静态检查并通过 `gh` 查看工作流结果。
+
 ---
 
 ## 文件结构
@@ -56,6 +58,7 @@
 - 创建：`app/src/main/AndroidManifest.xml`
 - 创建：`app/src/main/res/values/strings.xml`
 - 创建：`app/src/main/res/values/themes.xml`
+- 创建：`.github/workflows/release.yml`
 
 - [ ] **步骤 1：创建最小 Gradle 工程配置**
 
@@ -100,15 +103,16 @@ android {
 </activity>
 ```
 
-- [ ] **步骤 3：生成并验证 Gradle wrapper**
+- [ ] **步骤 3：生成 Gradle wrapper 并由 GitHub Actions 验证**
 
-运行：
+工作流运行：
 
 ```bash
-JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home ./gradlew --version
+./gradlew --version
 ```
 
-预期：输出 `Gradle 9.6.1` 和 Java 17，不下载或构建 debug APK。
+预期：GitHub Actions 输出 `Gradle 9.6.1` 和 Java 17，不下载或构建 debug APK。
+
 
 - [ ] **步骤 4：提交工程骨架**
 

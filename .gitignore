@@ -6,3 +6,6 @@ local.properties
 *.iml
 .superpowers/
 .worktrees/
+.release-signing/
+keystore.properties
+.android-sdk/
