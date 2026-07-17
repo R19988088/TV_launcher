@@ -2,6 +2,7 @@ package com.r19988088.tvlauncher.display;
 
 import android.view.Display;
 import android.view.Window;
+import android.view.WindowManager;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,10 +32,11 @@ public final class DisplayModeController {
             return;
         }
         try {
-            window.setPreferredDisplayModeId(selected.id());
+            WindowManager.LayoutParams attributes = window.getAttributes();
+            attributes.preferredDisplayModeId = selected.id();
+            window.setAttributes(attributes);
         } catch (RuntimeException ignored) {
             // The vendor display service may reject third-party mode requests.
         }
     }
 }
-
