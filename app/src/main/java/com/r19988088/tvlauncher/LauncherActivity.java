@@ -29,6 +29,7 @@ import com.r19988088.tvlauncher.model.AppEntry;
 import com.r19988088.tvlauncher.model.ReorderSession;
 import com.r19988088.tvlauncher.ui.AppCardView;
 import com.r19988088.tvlauncher.ui.AppGridAdapter;
+import com.r19988088.tvlauncher.ui.GridFocusNavigator;
 import com.r19988088.tvlauncher.ui.GridMetrics;
 import com.r19988088.tvlauncher.ui.LauncherGridView;
 import java.io.IOException;
@@ -148,6 +149,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         if (reorderSession != null && isMoveCommandKey(keyCode)) {
             return event.getAction() != KeyEvent.ACTION_UP || handleMoveKey(keyCode);
         }
+        if (isNavigationKey(keyCode)) {
+            return event.getAction() != KeyEvent.ACTION_DOWN || handleNavigationKey(keyCode);
+        }
         if (event.getAction() != KeyEvent.ACTION_UP) {
             return super.dispatchKeyEvent(event);
         }
@@ -241,6 +245,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         String focusedComponentId = focusedComponentId();
         entries = new ArrayList<>(resolved);
         adapter.replace(entries);
+        configureGrid();
         boolean empty = entries.isEmpty();
         emptyPrompt.setVisibility(empty ? View.VISIBLE : View.GONE);
         gridView.setVisibility(empty ? View.GONE : View.VISIBLE);
@@ -259,11 +264,12 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 gridView.getWidth(),
                 gridView.getHeight(),
                 columns,
+                entries.size(),
                 state.settings().cardScalePercent(),
                 getResources().getDisplayMetrics().density);
-        gridView.setNumColumns(columns);
+        gridView.setNumColumns(metrics.displayColumns());
         gridView.setColumnWidth(metrics.columnWidth());
-        gridView.setStretchMode(GridView.STRETCH_SPACING);
+        gridView.setStretchMode(GridView.NO_STRETCH);
         gridView.setHorizontalSpacing(metrics.horizontalSpacing());
         gridView.setVerticalSpacing(metrics.verticalSpacing());
         gridView.setPadding(
@@ -276,6 +282,40 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 metrics.cardWidth(),
                 metrics.cardHeight(),
                 state.settings().iconScalePercent());
+    }
+
+    private boolean handleNavigationKey(int keyCode) {
+        if (entries.isEmpty()) {
+            return true;
+        }
+        int columns = Math.max(1, Math.min(state.settings().columns(), entries.size()));
+        View focused = gridView.findFocus();
+        int current = focused == null ? -1 : gridView.getPositionForView(focused);
+        if (current < 0 || current >= entries.size()) {
+            current = gridView.getSelectedItemPosition();
+        }
+        if (current < 0 || current >= entries.size()) {
+            current = 0;
+        }
+        int direction;
+        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+            direction = GridFocusNavigator.LEFT;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            direction = GridFocusNavigator.RIGHT;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            direction = GridFocusNavigator.UP;
+        } else {
+            direction = GridFocusNavigator.DOWN;
+        }
+        focusPosition(GridFocusNavigator.move(current, entries.size(), columns, direction));
+        return true;
+    }
+
+    private static boolean isNavigationKey(int keyCode) {
+        return keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                || keyCode == KeyEvent.KEYCODE_DPAD_UP
+                || keyCode == KeyEvent.KEYCODE_DPAD_DOWN;
     }
 
     private boolean handleMoveKey(int keyCode) {
@@ -531,7 +571,6 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
 
     private Bitmap decodeDefaultWallpaper() {
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 8;
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         return BitmapFactory.decodeResource(getResources(), R.drawable.default_wallpaper, options);
     }
