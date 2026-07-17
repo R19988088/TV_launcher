@@ -71,6 +71,9 @@ public final class BannerLoader {
             final int height,
             final int iconScalePercent,
             final Callback callback) {
+        if (!hasRenderableSize(width, height) || closed) {
+            return;
+        }
         final BannerCacheKey key = new BannerCacheKey(
                 entry.componentId(),
                 entry.lastUpdateTime(),
@@ -78,9 +81,6 @@ public final class BannerLoader {
                 height,
                 iconScalePercent);
         final String cacheName = key.fileName();
-        if (closed) {
-            return;
-        }
         Bitmap cached = memoryCache.get(cacheName);
         if (cached != null && !cached.isRecycled()) {
             callback.onLoaded(cacheName, entry.componentId(), cached);
@@ -130,6 +130,10 @@ public final class BannerLoader {
         closed = true;
         executor.shutdownNow();
         memoryCache.evictAll();
+    }
+
+    static boolean hasRenderableSize(int width, int height) {
+        return width > 0 && height > 0;
     }
 
     private Bitmap render(AppEntry entry, int width, int height, int iconScalePercent) {
