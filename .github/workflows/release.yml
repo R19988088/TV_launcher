@@ -67,7 +67,9 @@ jobs:
           version_name="$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" app/build.gradle)"
           target_apk="TVLauncher-${version_name}.apk"
           cp "$source_apk" "$target_apk"
-          apksigner verify --verbose --print-certs "$target_apk"
+          apksigner="$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -1)"
+          test -x "$apksigner"
+          "$apksigner" verify --verbose --print-certs "$target_apk"
           printf 'path=%s\n' "$target_apk" >> "$GITHUB_OUTPUT"
 
       - name: Publish direct APK release asset
