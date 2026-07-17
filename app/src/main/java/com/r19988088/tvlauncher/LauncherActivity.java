@@ -1,5 +1,6 @@
 package com.r19988088.tvlauncher;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@SuppressLint("GestureBackNavigation")
 public final class LauncherActivity extends Activity implements AppGridAdapter.Listener {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService repositoryExecutor = Executors.newSingleThreadExecutor();
