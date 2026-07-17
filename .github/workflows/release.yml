@@ -55,7 +55,9 @@ jobs:
           } > keystore.properties
 
       - name: Test, lint and build signed release
-        run: ./gradlew --no-daemon :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease
+        run: |
+          ./gradlew --no-daemon :app:tasks --all
+          ./gradlew --no-daemon :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease
 
       - name: Verify and name APK
         id: apk
@@ -88,4 +90,3 @@ jobs:
           else
             gh release create "$tag" "$apk" --target "$GITHUB_SHA" --title "TV Launcher $tag" --generate-notes
           fi
-
