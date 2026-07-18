@@ -134,6 +134,10 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                     int oldBottom) {
                 if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
                     configureGrid();
+                    if (!entries.isEmpty()) {
+                        rebuildGrid();
+                        activatePosition(Math.max(0, activePosition), false);
+                    }
                 }
             }
         });
