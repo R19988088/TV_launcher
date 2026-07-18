@@ -26,14 +26,14 @@ public final class UpdateApkProvider extends ContentProvider {
         if (!"update.apk".equals(uri.getLastPathSegment()) || !"r".equals(mode)) {
             throw new FileNotFoundException();
         }
-        File apk = new File(getContext().getCacheDir(), "updates/update.apk");
+        File apk = updateApk();
         return ParcelFileDescriptor.open(apk, ParcelFileDescriptor.MODE_READ_ONLY);
     }
 
     @Override
     public Cursor query(Uri uri, String[] projection, String selection,
             String[] selectionArgs, String sortOrder) {
-        File apk = new File(getContext().getCacheDir(), "updates/update.apk");
+        File apk = updateApk();
         MatrixCursor cursor = new MatrixCursor(new String[] {
             OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE
         });
@@ -45,4 +45,12 @@ public final class UpdateApkProvider extends ContentProvider {
     @Override public int delete(Uri uri, String selection, String[] selectionArgs) { return 0; }
     @Override public int update(Uri uri, ContentValues values, String selection,
             String[] selectionArgs) { return 0; }
+
+    private File updateApk() {
+        File external = getContext().getExternalFilesDir("updates");
+        File directory = external == null
+                ? new File(getContext().getCacheDir(), "updates")
+                : external;
+        return new File(directory, "update.apk");
+    }
 }

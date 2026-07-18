@@ -976,7 +976,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                     return;
                 }
                 availableUpdate = release;
-                downloadedUpdate = new File(getCacheDir(), "updates/update.apk");
+                downloadedUpdate = new File(updateDirectory(), "update.apk");
                 updateStatus.setText(getString(R.string.update_available, release.version()));
                 updateButton.setText(getString(
                         downloadedUpdate.isFile() ? R.string.install_update : R.string.download_update,
@@ -994,7 +994,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             File apk = null;
             try {
                 apk = new GitHubUpdateClient().download(
-                        release, new File(getCacheDir(), "updates"));
+                        release, updateDirectory());
             } catch (IOException ignored) {}
             final File downloaded = apk;
             mainHandler.post(() -> {
@@ -1024,6 +1024,20 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
 
     private void installUpdate() {
         if (downloadedUpdate == null || !downloadedUpdate.isFile()) return;
+        updateBusy = true;
+        updateStatus.setText(getString(R.string.installing_update, availableUpdate.version()));
+        final File apk = downloadedUpdate;
+        repositoryExecutor.execute(() -> {
+            boolean installed = systemPackageControl.installViaLocalAdb(
+                    apk, new File(updateDirectory(), "install.done"));
+            mainHandler.post(() -> {
+                updateBusy = false;
+                if (!installed) launchSystemInstaller();
+            });
+        });
+    }
+
+    private void launchSystemInstaller() {
         if (Build.VERSION.SDK_INT >= 26
                 && !getPackageManager().canRequestPackageInstalls()) {
             try {
@@ -1043,6 +1057,11 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         } catch (ActivityNotFoundException failure) {
             Toast.makeText(this, R.string.update_download_failed, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private File updateDirectory() {
+        File external = getExternalFilesDir("updates");
+        return external == null ? new File(getCacheDir(), "updates") : external;
     }
 
     private String currentVersion() {

@@ -47,6 +47,16 @@ public final class SystemPackageControl {
         }
     }
 
+    public boolean installViaLocalAdb(File apk, File completionMarker) {
+        completionMarker.delete();
+        try {
+            localAdbShell.execute(localAdbInstallCommandFor(apk, completionMarker));
+            return completionMarker.isFile();
+        } catch (Exception failure) {
+            return false;
+        }
+    }
+
     public boolean setDisabledViaShizuku(String packageName, boolean disabled)
             throws IOException, InterruptedException {
         return executeViaShizuku(commandFor(packageName, disabled));
@@ -80,6 +90,16 @@ public final class SystemPackageControl {
 
     static String localAdbUninstallCommandFor(String packageName) {
         return "pm uninstall --user 0 " + packageName;
+    }
+
+    static String localAdbInstallCommandFor(File apk, File completionMarker) {
+        return "rm -f " + shellPath(completionMarker)
+                + "; pm install -r " + shellPath(apk)
+                + " && printf success > " + shellPath(completionMarker);
+    }
+
+    private static String shellPath(File file) {
+        return "'" + file.getAbsolutePath().replace("'", "'\\''") + "'";
     }
 
     private boolean isInstalled(String packageName) {

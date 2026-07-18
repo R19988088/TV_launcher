@@ -44,6 +44,7 @@
     <string name="download_update">下载并安装 %1$s</string>
     <string name="downloading_update">正在下载 %1$s…</string>
     <string name="install_update">安装 %1$s</string>
+    <string name="installing_update">正在通过本机 ADB 安装 %1$s…</string>
     <string name="update_check_failed">更新检查失败</string>
     <string name="update_download_failed">更新下载失败</string>
     <string name="allow_install_updates">请允许安装未知应用，然后再次点击安装</string>
