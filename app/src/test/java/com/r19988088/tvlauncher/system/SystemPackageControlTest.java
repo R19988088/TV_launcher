@@ -1,6 +1,7 @@
 package com.r19988088.tvlauncher.system;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
@@ -13,5 +14,15 @@ public final class SystemPackageControlTest {
         assertArrayEquals(
                 new String[] {"pm", "enable", "--user", "0", "com.mitv.tvhome"},
                 SystemPackageControl.commandFor("com.mitv.tvhome", false));
+    }
+
+    @Test
+    public void buildsLocalAdbShellCommands() {
+        assertEquals(
+                "pm disable-user --user 0 com.mitv.tvhome",
+                SystemPackageControl.localAdbCommandFor("com.mitv.tvhome", true));
+        assertEquals(
+                "pm enable --user 0 com.mitv.tvhome",
+                SystemPackageControl.localAdbCommandFor("com.mitv.tvhome", false));
     }
 }
