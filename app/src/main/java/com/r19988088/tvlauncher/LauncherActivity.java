@@ -278,6 +278,13 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     public boolean dispatchKeyEvent(KeyEvent event) {
         int keyCode = event.getKeyCode();
         if (isSettingsOpen()) {
+            if (!settingsCategoryNavigator.isEntered()
+                    && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    showSettingsCategory(settingsCategoryNavigator.selected(), true);
+                }
+                return true;
+            }
             if (event.getAction() == KeyEvent.ACTION_UP
                     && (keyCode == KeyEvent.KEYCODE_MENU
                             || keyCode == KeyEvent.KEYCODE_SETTINGS)) {

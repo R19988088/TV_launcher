@@ -9,6 +9,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 public final class RandomWallpaperClient {
@@ -46,7 +47,7 @@ public final class RandomWallpaperClient {
         File temporary = new File(directory, "random-wallpaper.download");
         HttpURLConnection connection = open(address);
         String contentType = connection.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
+        if (!isWallpaperResponse(contentType)) {
             connection.disconnect();
             throw new IOException("Wallpaper response is not an image");
         }
@@ -64,6 +65,15 @@ public final class RandomWallpaperClient {
             throw new IOException("Cannot save wallpaper");
         }
         return target;
+    }
+
+    static boolean isWallpaperResponse(String contentType) {
+        if (contentType == null) return false;
+        String normalized = contentType.toLowerCase(Locale.US);
+        return !normalized.startsWith("text/")
+                && !normalized.contains("html")
+                && !normalized.contains("json")
+                && !normalized.contains("xml");
     }
 
     private HttpURLConnection open(String address) throws IOException {
