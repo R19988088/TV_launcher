@@ -45,6 +45,7 @@ import com.r19988088.tvlauncher.ui.ScaleValueFormatter;
 import com.r19988088.tvlauncher.ui.SettingsCategoryNavigator;
 import com.r19988088.tvlauncher.weather.WeatherClient;
 import com.r19988088.tvlauncher.wallpaper.RandomWallpaperClient;
+import com.r19988088.tvlauncher.wallpaper.WallpaperDecodeSize;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1110,12 +1111,17 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         final int generation = ++wallpaperLoadGeneration;
         String uriText = state.wallpaperUri();
         final Uri uri = uriText.isEmpty() ? null : Uri.parse(uriText);
+        final android.view.Display.Mode mode = getWindowManager().getDefaultDisplay().getMode();
+        final int targetWidth = mode.getPhysicalWidth();
+        final int targetHeight = mode.getPhysicalHeight();
         repositoryExecutor.execute(() -> {
-            Bitmap candidate = uri == null ? null : decodeWallpaper(uri);
+            Bitmap candidate = uri == null
+                    ? null
+                    : decodeWallpaper(uri, targetWidth, targetHeight);
             if (candidate == null) {
                 candidate = decodeDefaultWallpaper();
             }
-            final Bitmap decoded = softenWallpaper(candidate);
+            final Bitmap decoded = candidate;
             mainHandler.post(() -> {
                 if (generation != wallpaperLoadGeneration || isFinishing()) {
                     if (decoded != null) {
@@ -1133,7 +1139,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         });
     }
 
-    private Bitmap decodeWallpaper(Uri uri) {
+    private Bitmap decodeWallpaper(Uri uri, int targetWidth, int targetHeight) {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         try (InputStream input = getContentResolver().openInputStream(uri)) {
@@ -1144,12 +1150,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         } catch (IOException | SecurityException ignored) {
             return null;
         }
-        int sample = 1;
-        while (bounds.outWidth / sample > 320 || bounds.outHeight / sample > 320) {
-            sample *= 2;
-        }
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = sample;
+        options.inSampleSize = WallpaperDecodeSize.sampleSize(
+                bounds.outWidth, bounds.outHeight, targetWidth, targetHeight);
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         try (InputStream input = getContentResolver().openInputStream(uri)) {
             if (input == null) {
@@ -1165,26 +1168,6 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         return BitmapFactory.decodeResource(getResources(), R.drawable.default_wallpaper, options);
-    }
-
-    private static Bitmap softenWallpaper(Bitmap source) {
-        if (source == null) {
-            return null;
-        }
-        int longest = Math.max(source.getWidth(), source.getHeight());
-        if (longest <= 160) {
-            return source;
-        }
-        float scale = 160f / longest;
-        Bitmap softened = Bitmap.createScaledBitmap(
-                source,
-                Math.max(1, Math.round(source.getWidth() * scale)),
-                Math.max(1, Math.round(source.getHeight() * scale)),
-                true);
-        if (softened != source) {
-            source.recycle();
-        }
-        return softened;
     }
 
     private void replaceCustomWallpaper(Bitmap replacement) {
