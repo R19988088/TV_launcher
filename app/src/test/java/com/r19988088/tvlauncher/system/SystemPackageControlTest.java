@@ -32,4 +32,14 @@ public final class SystemPackageControlTest {
                 "pm uninstall --user 0 com.example.tv",
                 SystemPackageControl.localAdbUninstallCommandFor("com.example.tv"));
     }
+
+    @Test
+    public void defaultsDisablePushAndAnalytics() {
+        assertArrayEquals(
+                new String[] {
+                    "com.xiaomi.mitv.tvpush.tvpushservice",
+                    "com.miui.tv.analytics"
+                },
+                SystemPackageControl.defaultDisabledPackages());
+    }
 }
