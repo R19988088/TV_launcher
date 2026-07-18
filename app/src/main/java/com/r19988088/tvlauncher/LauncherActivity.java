@@ -469,14 +469,21 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private View visibleCardAt(int position) {
-        int childIndex = position - gridView.getFirstVisiblePosition();
-        return childIndex >= 0 && childIndex < gridView.getChildCount()
-                ? gridView.getChildAt(childIndex)
-                : null;
+        for (int index = 0; index < gridView.getChildCount(); index++) {
+            View child = gridView.getChildAt(index);
+            if (gridView.getPositionForView(child) == position) {
+                return child;
+            }
+        }
+        return null;
     }
 
     private void focusPosition(int position) {
         gridView.setSelection(position);
+        View visible = visibleCardAt(position);
+        if (visible != null && visible.requestFocus()) {
+            return;
+        }
         gridView.post(() -> {
             View child = visibleCardAt(position);
             if (child != null) {
