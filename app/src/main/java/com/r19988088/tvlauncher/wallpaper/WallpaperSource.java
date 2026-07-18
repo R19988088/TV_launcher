@@ -12,6 +12,8 @@ public final class WallpaperSource {
     private static final Pattern ANCHOR = Pattern.compile("<a\\b[^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern HREF = Pattern.compile(
             "\\bhref\\s*=\\s*[\\\"']([^\\\"']+)[\\\"']", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PAGE = Pattern.compile(
+            "\\bdata-page\\s*=\\s*[\\\"'](\\d+)[\\\"']", Pattern.CASE_INSENSITIVE);
 
     private WallpaperSource() {}
 
@@ -25,6 +27,18 @@ public final class WallpaperSource {
             if (href.find()) links.add(href.group(1));
         }
         return new ArrayList<>(links);
+    }
+
+    public static int pageCount(String html) {
+        int count = 1;
+        Matcher pages = PAGE.matcher(html);
+        while (pages.find()) count = Math.max(count, Integer.parseInt(pages.group(1)));
+        return count;
+    }
+
+    public static String searchPage(String query, int page) {
+        if (page <= 1) return RandomWallpaperClient.DEFAULT_SOURCE;
+        return "https://4kwallpapers.com/search/" + query + "?page=" + page;
     }
 
     public static String desktopImage(String detailPage, String html, int physicalWidth) {

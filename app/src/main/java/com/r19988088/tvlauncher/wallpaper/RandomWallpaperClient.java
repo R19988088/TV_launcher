@@ -20,9 +20,21 @@ public final class RandomWallpaperClient {
             "Mozilla/5.0 (Linux; Android TV) AppleWebKit/537.36 Safari/537.36";
 
     public File download(File directory, int physicalWidth) throws IOException {
-        List<String> details = WallpaperSource.detailPages(fetchText(DEFAULT_SOURCE));
+        Random random = new Random();
+        String firstPage = fetchText(DEFAULT_SOURCE);
+        int page = 1 + random.nextInt(WallpaperSource.pageCount(firstPage));
+        String searchPage = firstPage;
+        if (page > 1) {
+            try {
+                searchPage = fetchText(WallpaperSource.searchPage("Abstract", page));
+            } catch (IOException ignored) {}
+        }
+        List<String> details = WallpaperSource.detailPages(searchPage);
+        if (details.isEmpty() && searchPage != firstPage) {
+            details = WallpaperSource.detailPages(firstPage);
+        }
         if (details.isEmpty()) throw new IOException("No wallpapers found");
-        String detail = details.get(new Random().nextInt(details.size()));
+        String detail = details.get(random.nextInt(details.size()));
         String image = WallpaperSource.desktopImage(detail, fetchText(detail), physicalWidth);
         if (image == null) throw new IOException("No desktop resolution found");
         return downloadImage(image, directory);
