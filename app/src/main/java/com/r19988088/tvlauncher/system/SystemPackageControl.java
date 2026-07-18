@@ -35,6 +35,15 @@ public final class SystemPackageControl {
         }
     }
 
+    public boolean setHomeViaLocalAdb(String componentName) {
+        try {
+            localAdbShell.execute(localAdbSetHomeCommandFor(componentName));
+            return true;
+        } catch (Exception failure) {
+            return false;
+        }
+    }
+
     public static String[] defaultDisabledPackages() {
         return DEFAULT_DISABLED_PACKAGES.clone();
     }
@@ -91,6 +100,10 @@ public final class SystemPackageControl {
 
     static String localAdbUninstallCommandFor(String packageName) {
         return "pm uninstall --user 0 " + packageName;
+    }
+
+    static String localAdbSetHomeCommandFor(String componentName) {
+        return "cmd package set-home-activity --user 0 " + componentName;
     }
 
     static String localAdbInstallCommandFor(File apk, File completionMarker) {

@@ -177,6 +177,22 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
+                    <TextView
+                        android:id="@+id/default_home_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="15sp" />
+
+                    <Button
+                        android:id="@+id/default_home_button"
+                        style="@style/SettingsWideButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/set_default_home" />
+
                     <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/columns_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
                         <Button style="@style/SettingsControlButton" android:id="@+id/columns_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />

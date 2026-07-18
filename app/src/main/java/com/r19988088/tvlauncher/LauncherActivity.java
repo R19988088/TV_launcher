@@ -5,10 +5,12 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -73,6 +75,8 @@ import rikka.shizuku.Shizuku;
 
 @SuppressLint("GestureBackNavigation")
 public final class LauncherActivity extends Activity implements AppGridAdapter.Listener {
+    private static final String HOME_COMPONENT =
+            "com.r19988088.tvlauncher/.LauncherActivity";
     private static final long REORDER_ANIMATION_DURATION_MS = 160L;
     private static final int REQUEST_SHIZUKU = 21;
     private static final int FIXED_ICON_SCALE_PERCENT = 60;
@@ -110,6 +114,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private TextView weatherView;
     private TextView updateStatus;
     private Button updateButton;
+    private TextView defaultHomeStatus;
+    private Button defaultHomeButton;
     private Switch tvHomeSwitch;
     private Switch voiceControlSwitch;
     private Switch appStoreSwitch;
@@ -225,6 +231,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         weatherView = findViewById(R.id.weather);
         updateStatus = findViewById(R.id.update_status);
         updateButton = findViewById(R.id.update_button);
+        defaultHomeStatus = findViewById(R.id.default_home_status);
+        defaultHomeButton = findViewById(R.id.default_home_button);
         tvHomeSwitch = findViewById(R.id.disable_tvhome);
         voiceControlSwitch = findViewById(R.id.disable_voice_control);
         appStoreSwitch = findViewById(R.id.disable_appstore);
@@ -280,6 +288,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         refreshDesktop();
         startClock();
         refreshWeather();
+        updateDefaultHomeStatus();
     }
 
     @Override
@@ -661,6 +670,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         discardMoveSession();
         updateSettingsValues();
         updateSystemSwitches();
+        updateDefaultHomeStatus();
         settingsPanel.setVisibility(View.VISIBLE);
         settingsPanel.setAlpha(0f);
         settingsPanel.setTranslationX(dp(36));
@@ -703,7 +713,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         if (enter) {
             View target = appsSelected
                     ? settingsAppList
-                    : desktopSelected ? findViewById(R.id.columns_minus) : wallpaperButton;
+                    : desktopSelected ? defaultHomeButton : wallpaperButton;
             target.requestFocus();
         } else {
             View target = appsSelected
@@ -827,6 +837,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         findViewById(R.id.spacing_plus).setOnClickListener(view -> changeSpacing(10));
         findViewById(R.id.top_rows_minus).setOnClickListener(view -> changeTopRows(-1));
         findViewById(R.id.top_rows_plus).setOnClickListener(view -> changeTopRows(1));
+        defaultHomeButton.setOnClickListener(view -> setDefaultHome());
         wallpaperButton.setOnClickListener(view -> refreshRandomWallpaper());
         saveWallpaperButton.setOnClickListener(view -> saveDownloadedWallpaper());
         localWallpaperGrid.setOnItemClickListener((parent, view, position, id) ->
@@ -849,6 +860,53 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         updateButton.setOnClickListener(view -> onUpdateClicked());
         settingsAppList.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         settingsAppList.setOnItemClickListener((parent, view, position, id) -> toggleSettingsApp(position));
+    }
+
+    private void setDefaultHome() {
+        defaultHomeButton.setEnabled(false);
+        defaultHomeStatus.setText(R.string.default_home_setting);
+        repositoryExecutor.execute(() -> {
+            systemPackageControl.setHomeViaLocalAdb(HOME_COMPONENT);
+            mainHandler.post(() -> {
+                boolean active = isDefaultHome();
+                updateDefaultHomeStatus();
+                Toast.makeText(
+                        this,
+                        active ? R.string.default_home_success : R.string.default_home_failed,
+                        Toast.LENGTH_SHORT).show();
+                if (!active) openSystemHomeSettings();
+            });
+        });
+    }
+
+    private void updateDefaultHomeStatus() {
+        if (defaultHomeStatus == null || defaultHomeButton == null) return;
+        boolean active = isDefaultHome();
+        defaultHomeStatus.setText(active
+                ? R.string.default_home_active
+                : R.string.default_home_inactive);
+        defaultHomeButton.setText(active
+                ? R.string.reset_default_home
+                : R.string.set_default_home);
+        defaultHomeButton.setEnabled(true);
+    }
+
+    private boolean isDefaultHome() {
+        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo resolved = getPackageManager().resolveActivity(
+                home, PackageManager.MATCH_DEFAULT_ONLY);
+        if (resolved == null || resolved.activityInfo == null) return false;
+        ComponentName current = new ComponentName(
+                resolved.activityInfo.packageName, resolved.activityInfo.name);
+        return current.equals(ComponentName.unflattenFromString(HOME_COMPONENT));
+    }
+
+    private void openSystemHomeSettings() {
+        try {
+            startActivity(new Intent(android.provider.Settings.ACTION_HOME_SETTINGS));
+        } catch (ActivityNotFoundException | SecurityException ignored) {
+            // Some TV firmware removes the standard HOME selection screen.
+        }
     }
 
     private void onSystemSwitchChanged(Switch source, String packageName, boolean disabled) {
