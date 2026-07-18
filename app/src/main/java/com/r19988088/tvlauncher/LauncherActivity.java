@@ -18,7 +18,6 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.widget.ArrayAdapter;
-import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -36,7 +35,7 @@ import com.r19988088.tvlauncher.ui.AppCardView;
 import com.r19988088.tvlauncher.ui.AppGridAdapter;
 import com.r19988088.tvlauncher.ui.GridFocusNavigator;
 import com.r19988088.tvlauncher.ui.GridMetrics;
-import com.r19988088.tvlauncher.ui.LauncherGridView;
+import com.r19988088.tvlauncher.ui.LauncherGridLayout;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -55,7 +54,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService repositoryExecutor = Executors.newSingleThreadExecutor();
 
-    private LauncherGridView gridView;
+    private LauncherGridLayout gridView;
     private TextView emptyPrompt;
     private ImageView wallpaperView;
     private View settingsPanel;
@@ -120,7 +119,6 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         appRepository = new AppRepository(this);
         bannerLoader = new BannerLoader(this);
         adapter = new AppGridAdapter(this, bannerLoader, this);
-        gridView.setAdapter(adapter);
         setupSettingsPanel();
         gridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
@@ -299,6 +297,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         activePosition = empty ? -1 : (restoredIndex >= 0 ? restoredIndex : 0);
         adapter.setActivePosition(activePosition);
         adapter.replace(entries);
+        rebuildGrid();
         emptyPrompt.setVisibility(empty ? View.VISIBLE : View.GONE);
         gridView.setVisibility(empty ? View.GONE : View.VISIBLE);
         if (!empty) {
@@ -319,16 +318,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 state.settings().cardScalePercent(),
                 state.settings().topBlankRows(),
                 getResources().getDisplayMetrics().density);
-        gridView.setNumColumns(metrics.displayColumns());
-        gridView.setColumnWidth(metrics.columnWidth());
-        gridView.setStretchMode(GridView.NO_STRETCH);
-        gridView.setHorizontalSpacing(metrics.horizontalSpacing());
-        gridView.setVerticalSpacing(metrics.verticalSpacing());
-        gridView.setPadding(
-                metrics.horizontalPadding(),
-                metrics.topPadding(),
-                metrics.horizontalPadding(),
-                metrics.verticalSpacing());
+        gridView.setMetrics(metrics);
         adapter.setCardMetrics(
                 metrics.columnWidth(),
                 metrics.cardWidth(),
@@ -410,6 +400,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         adapter.swap(selected, target);
         if (!animateSwap(selected, target, selectedView, targetView)) {
             adapter.replace(entries);
+            rebuildGrid();
             focusPosition(target);
         }
         return true;
@@ -450,6 +441,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         reorderSession = null;
         entries = orderEntries(entries, original);
         adapter.replace(entries);
+        rebuildGrid();
         Toast.makeText(this, R.string.move_cancelled, Toast.LENGTH_SHORT).show();
     }
 
@@ -581,6 +573,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         preferences.save(state);
         configureGrid();
         adapter.setActivePosition(activePosition);
+        rebuildGrid();
         updateSettingsValues();
         activatePosition(Math.max(0, activePosition), false);
     }
@@ -705,23 +698,18 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                     fromCard.setTranslationY(0f);
                     toCard.setTranslationX(0f);
                     toCard.setTranslationY(0f);
-                    gridView.setSelection(to);
-                    toCard.requestFocus();
                     adapter.bindView(from, fromCard);
                     adapter.bindView(to, toCard);
+                    activatePosition(to, false);
                 })
                 .start();
         return true;
     }
 
     private View visibleCardAt(int position) {
-        for (int index = 0; index < gridView.getChildCount(); index++) {
-            View child = gridView.getChildAt(index);
-            if (gridView.getPositionForView(child) == position) {
-                return child;
-            }
-        }
-        return null;
+        return position >= 0 && position < gridView.getChildCount()
+                ? gridView.getChildAt(position)
+                : null;
     }
 
     private void focusPosition(int position) {
@@ -739,7 +727,6 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         activePosition = position;
         adapter.setActivePosition(position);
         gridView.setActivePosition(position);
-        gridView.setSelection(position);
         gridView.requestFocus();
         View visible = visibleCardAt(position);
         if (visible instanceof AppCardView) {
@@ -750,8 +737,19 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             View child = visibleCardAt(position);
             if (child instanceof AppCardView && position == activePosition) {
                 ((AppCardView) child).setActive(true, animate);
+                gridView.ensurePositionVisible(position);
             }
         });
+        gridView.ensurePositionVisible(position);
+    }
+
+    private void rebuildGrid() {
+        gridView.removeAllViews();
+        for (int position = 0; position < entries.size(); position++) {
+            gridView.addView(adapter.getView(position, null, gridView));
+        }
+        gridView.setActivePosition(activePosition);
+        gridView.requestLayout();
     }
 
     private String focusedComponentId() {
