@@ -48,7 +48,6 @@ public final class AppCardView extends FrameLayout {
 
         imageView = new ImageView(context);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        imageView.setFilterBitmap(true);
         placeholder = new GradientDrawable();
         placeholder.setColor(0x992b3540);
         imageView.setBackground(placeholder);
