@@ -54,4 +54,14 @@ public final class WallpaperLibrary {
         Arrays.sort(files, (left, right) -> Long.compare(right.lastModified(), left.lastModified()));
         return new ArrayList<>(Arrays.asList(files));
     }
+
+    public boolean delete(File file) {
+        try {
+            File candidate = file.getCanonicalFile();
+            if (!savedDirectory.getCanonicalFile().equals(candidate.getParentFile())) return false;
+            return candidate.isFile() && candidate.delete();
+        } catch (IOException failure) {
+            return false;
+        }
+    }
 }

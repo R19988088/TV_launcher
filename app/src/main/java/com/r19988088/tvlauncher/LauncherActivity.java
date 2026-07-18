@@ -831,6 +831,10 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         saveWallpaperButton.setOnClickListener(view -> saveDownloadedWallpaper());
         localWallpaperGrid.setOnItemClickListener((parent, view, position, id) ->
                 applyLocalWallpaper(localWallpaperAdapter.getItem(position)));
+        localWallpaperGrid.setOnItemLongClickListener((parent, view, position, id) -> {
+            confirmDeleteLocalWallpaper(localWallpaperAdapter.getItem(position));
+            return true;
+        });
         tvHomeSwitch.setOnCheckedChangeListener((button, checked) ->
                 onSystemSwitchChanged(tvHomeSwitch, "com.mitv.tvhome", checked));
         voiceControlSwitch.setOnCheckedChangeListener((button, checked) ->
@@ -1221,6 +1225,38 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         preferences.save(state);
         loadWallpaper();
         Toast.makeText(this, R.string.local_wallpaper_applied, Toast.LENGTH_SHORT).show();
+    }
+
+    private void confirmDeleteLocalWallpaper(File wallpaper) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_wallpaper_title)
+                .setMessage(R.string.delete_wallpaper_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete_wallpaper_confirm,
+                        (dialog, which) -> deleteLocalWallpaper(wallpaper))
+                .show();
+    }
+
+    private void deleteLocalWallpaper(File wallpaper) {
+        final boolean active = Uri.fromFile(wallpaper).toString().equals(state.wallpaperUri());
+        repositoryExecutor.execute(() -> {
+            final boolean deleted = wallpaperLibrary.delete(wallpaper);
+            mainHandler.post(() -> {
+                if (!deleted) {
+                    Toast.makeText(this, R.string.delete_wallpaper_failed,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (active) {
+                    state = new LauncherState(state.componentIds(), state.settings(), "");
+                    preferences.save(state);
+                    loadWallpaper();
+                }
+                refreshLocalWallpapers();
+                Toast.makeText(this, R.string.delete_wallpaper_success,
+                        Toast.LENGTH_SHORT).show();
+            });
+        });
     }
 
     private boolean animateSwap(int from, int to, View fromView, View toView) {
