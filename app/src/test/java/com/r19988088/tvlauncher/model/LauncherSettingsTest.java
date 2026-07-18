@@ -12,14 +12,16 @@ public final class LauncherSettingsTest {
         assertEquals(6, settings.columns());
         assertEquals(100, settings.cardScalePercent());
         assertEquals(60, settings.iconScalePercent());
+        assertEquals(2, settings.topBlankRows());
     }
 
     @Test
     public void valuesAreClampedToSupportedRanges() {
-        LauncherSettings settings = new LauncherSettings(2, 140, 10);
+        LauncherSettings settings = new LauncherSettings(2, 140, 10, 9);
 
         assertEquals(4, settings.columns());
         assertEquals(120, settings.cardScalePercent());
         assertEquals(40, settings.iconScalePercent());
+        assertEquals(5, settings.topBlankRows());
     }
 }

@@ -16,8 +16,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
+import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.r19988088.tvlauncher.data.AppRepository;
@@ -26,6 +30,7 @@ import com.r19988088.tvlauncher.data.LauncherState;
 import com.r19988088.tvlauncher.display.DisplayModeController;
 import com.r19988088.tvlauncher.image.BannerLoader;
 import com.r19988088.tvlauncher.model.AppEntry;
+import com.r19988088.tvlauncher.model.LauncherSettings;
 import com.r19988088.tvlauncher.model.ReorderSession;
 import com.r19988088.tvlauncher.ui.AppCardView;
 import com.r19988088.tvlauncher.ui.AppGridAdapter;
@@ -45,6 +50,7 @@ import java.util.concurrent.Executors;
 @SuppressLint("GestureBackNavigation")
 public final class LauncherActivity extends Activity implements AppGridAdapter.Listener {
     private static final long REORDER_ANIMATION_DURATION_MS = 160L;
+    private static final int REQUEST_WALLPAPER = 20;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService repositoryExecutor = Executors.newSingleThreadExecutor();
@@ -52,12 +58,22 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private LauncherGridView gridView;
     private TextView emptyPrompt;
     private ImageView wallpaperView;
+    private View settingsPanel;
+    private ListView settingsAppList;
+    private ProgressBar settingsAppLoading;
+    private TextView columnsValue;
+    private TextView cardValue;
+    private TextView iconValue;
+    private TextView topRowsValue;
     private LauncherPreferences preferences;
     private AppRepository appRepository;
     private BannerLoader bannerLoader;
     private AppGridAdapter adapter;
     private LauncherState state = LauncherState.defaults();
     private List<AppEntry> entries = new ArrayList<>();
+    private List<AppEntry> discoveredApps = new ArrayList<>();
+    private int activePosition = -1;
+    private boolean centerLongPressed;
     private ReorderSession reorderSession;
     private boolean moveAnimationRunning;
     private int moveAnimationGeneration;
@@ -72,6 +88,16 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             refreshDesktop();
         }
     };
+    private final Runnable centerLongPress = new Runnable() {
+        @Override
+        public void run() {
+            AppEntry active = activeEntry();
+            if (active != null) {
+                centerLongPressed = true;
+                onLongPress(active);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,11 +109,19 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         wallpaperView = findViewById(R.id.wallpaper);
         gridView = findViewById(R.id.app_grid);
         emptyPrompt = findViewById(R.id.empty_prompt);
+        settingsPanel = findViewById(R.id.settings_panel);
+        settingsAppList = findViewById(R.id.settings_app_list);
+        settingsAppLoading = findViewById(R.id.settings_app_loading);
+        columnsValue = findViewById(R.id.columns_value);
+        cardValue = findViewById(R.id.card_value);
+        iconValue = findViewById(R.id.icon_value);
+        topRowsValue = findViewById(R.id.top_rows_value);
         preferences = new LauncherPreferences(this);
         appRepository = new AppRepository(this);
         bannerLoader = new BannerLoader(this);
         adapter = new AppGridAdapter(this, bannerLoader, this);
         gridView.setAdapter(adapter);
+        setupSettingsPanel();
         gridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
             public void onLayoutChange(
@@ -146,11 +180,23 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int keyCode = event.getKeyCode();
+        if (isSettingsOpen()) {
+            if (event.getAction() == KeyEvent.ACTION_UP
+                    && (keyCode == KeyEvent.KEYCODE_MENU
+                            || keyCode == KeyEvent.KEYCODE_SETTINGS)) {
+                closeSettings();
+                return true;
+            }
+            return super.dispatchKeyEvent(event);
+        }
         if (reorderSession != null && isMoveCommandKey(keyCode)) {
             return event.getAction() != KeyEvent.ACTION_UP || handleMoveKey(keyCode);
         }
         if (isNavigationKey(keyCode)) {
             return event.getAction() != KeyEvent.ACTION_DOWN || handleNavigationKey(keyCode);
+        }
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            return handleCenterKey(event);
         }
         if (event.getAction() != KeyEvent.ACTION_UP) {
             return super.dispatchKeyEvent(event);
@@ -164,7 +210,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
 
     @Override
     public void onBackPressed() {
-        if (reorderSession != null) {
+        if (isSettingsOpen()) {
+            closeSettings();
+        } else if (reorderSession != null) {
             cancelMove();
         }
     }
@@ -211,6 +259,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     protected void onDestroy() {
         loadGeneration++;
         wallpaperLoadGeneration++;
+        mainHandler.removeCallbacks(centerLongPress);
         repositoryExecutor.shutdownNow();
         bannerLoader.close();
         if (customWallpaper != null) {
@@ -245,13 +294,15 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         String focusedComponentId = focusedComponentId();
         entries = new ArrayList<>(resolved);
         configureGrid();
-        adapter.replace(entries);
         boolean empty = entries.isEmpty();
+        int restoredIndex = empty ? -1 : indexOf(focusedComponentId);
+        activePosition = empty ? -1 : (restoredIndex >= 0 ? restoredIndex : 0);
+        adapter.setActivePosition(activePosition);
+        adapter.replace(entries);
         emptyPrompt.setVisibility(empty ? View.VISIBLE : View.GONE);
         gridView.setVisibility(empty ? View.GONE : View.VISIBLE);
         if (!empty) {
-            int restoredIndex = indexOf(focusedComponentId);
-            focusPosition(restoredIndex >= 0 ? restoredIndex : 0);
+            activatePosition(activePosition, false);
         }
     }
 
@@ -266,6 +317,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 columns,
                 entries.size(),
                 state.settings().cardScalePercent(),
+                state.settings().topBlankRows(),
                 getResources().getDisplayMetrics().density);
         gridView.setNumColumns(metrics.displayColumns());
         gridView.setColumnWidth(metrics.columnWidth());
@@ -289,11 +341,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             return true;
         }
         int columns = Math.max(1, Math.min(state.settings().columns(), entries.size()));
-        View focused = gridView.findFocus();
-        int current = focused == null ? -1 : gridView.getPositionForView(focused);
-        if (current < 0 || current >= entries.size()) {
-            current = gridView.getSelectedItemPosition();
-        }
+        int current = activePosition;
         if (current < 0 || current >= entries.size()) {
             current = 0;
         }
@@ -307,7 +355,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         } else {
             direction = GridFocusNavigator.DOWN;
         }
-        focusPosition(GridFocusNavigator.move(current, entries.size(), columns, direction));
+        activatePosition(
+                GridFocusNavigator.move(current, entries.size(), columns, direction), true);
         return true;
     }
 
@@ -419,8 +468,205 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
 
     private void openSettings() {
         discardMoveSession();
-        startActivity(new Intent().setClassName(
-                getPackageName(), getPackageName() + ".SettingsActivity"));
+        updateSettingsValues();
+        settingsPanel.setVisibility(View.VISIBLE);
+        settingsPanel.setAlpha(0f);
+        settingsPanel.setTranslationX(dp(36));
+        settingsPanel.animate()
+                .alpha(1f)
+                .translationX(0f)
+                .setDuration(180L)
+                .start();
+        findViewById(R.id.columns_minus).requestFocus();
+        loadSettingsApps();
+    }
+
+    private void closeSettings() {
+        settingsPanel.animate()
+                .alpha(0f)
+                .translationX(dp(36))
+                .setDuration(140L)
+                .withEndAction(() -> {
+                    settingsPanel.setVisibility(View.GONE);
+                    gridView.requestFocus();
+                    activatePosition(Math.max(0, activePosition), false);
+                })
+                .start();
+    }
+
+    private boolean isSettingsOpen() {
+        return settingsPanel != null && settingsPanel.getVisibility() == View.VISIBLE;
+    }
+
+    private boolean handleCenterKey(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (event.getRepeatCount() == 0) {
+                centerLongPressed = false;
+                mainHandler.postDelayed(centerLongPress, ViewConfiguration.getLongPressTimeout());
+            }
+            return true;
+        }
+        if (event.getAction() == KeyEvent.ACTION_UP) {
+            mainHandler.removeCallbacks(centerLongPress);
+            if (!centerLongPressed) {
+                AppEntry active = activeEntry();
+                if (active != null) {
+                    onLaunch(active);
+                }
+            }
+            centerLongPressed = false;
+            return true;
+        }
+        return true;
+    }
+
+    private AppEntry activeEntry() {
+        return activePosition >= 0 && activePosition < entries.size()
+                ? entries.get(activePosition)
+                : null;
+    }
+
+    private void setupSettingsPanel() {
+        findViewById(R.id.columns_minus).setOnClickListener(view -> changeColumns(-1));
+        findViewById(R.id.columns_plus).setOnClickListener(view -> changeColumns(1));
+        findViewById(R.id.card_minus).setOnClickListener(view -> changeCardScale(-5));
+        findViewById(R.id.card_plus).setOnClickListener(view -> changeCardScale(5));
+        findViewById(R.id.icon_minus).setOnClickListener(view -> changeIconScale(-5));
+        findViewById(R.id.icon_plus).setOnClickListener(view -> changeIconScale(5));
+        findViewById(R.id.top_rows_minus).setOnClickListener(view -> changeTopRows(-1));
+        findViewById(R.id.top_rows_plus).setOnClickListener(view -> changeTopRows(1));
+        findViewById(R.id.wallpaper_button).setOnClickListener(view -> chooseWallpaper());
+        settingsAppList.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+        settingsAppList.setOnItemClickListener((parent, view, position, id) -> toggleSettingsApp(position));
+    }
+
+    private void changeColumns(int delta) {
+        LauncherSettings current = state.settings();
+        applySettings(new LauncherSettings(
+                current.columns() + delta,
+                current.cardScalePercent(),
+                current.iconScalePercent(),
+                current.topBlankRows()));
+    }
+
+    private void changeCardScale(int delta) {
+        LauncherSettings current = state.settings();
+        applySettings(new LauncherSettings(
+                current.columns(),
+                current.cardScalePercent() + delta,
+                current.iconScalePercent(),
+                current.topBlankRows()));
+    }
+
+    private void changeIconScale(int delta) {
+        LauncherSettings current = state.settings();
+        applySettings(new LauncherSettings(
+                current.columns(),
+                current.cardScalePercent(),
+                current.iconScalePercent() + delta,
+                current.topBlankRows()));
+    }
+
+    private void changeTopRows(int delta) {
+        LauncherSettings current = state.settings();
+        applySettings(new LauncherSettings(
+                current.columns(),
+                current.cardScalePercent(),
+                current.iconScalePercent(),
+                current.topBlankRows() + delta));
+    }
+
+    private void applySettings(LauncherSettings settings) {
+        state = new LauncherState(state.componentIds(), settings, state.wallpaperUri());
+        preferences.save(state);
+        configureGrid();
+        adapter.setActivePosition(activePosition);
+        updateSettingsValues();
+        activatePosition(Math.max(0, activePosition), false);
+    }
+
+    private void updateSettingsValues() {
+        LauncherSettings settings = state.settings();
+        columnsValue.setText(String.valueOf(settings.columns()));
+        cardValue.setText(getString(R.string.percent_value, settings.cardScalePercent()));
+        iconValue.setText(getString(R.string.percent_value, settings.iconScalePercent()));
+        topRowsValue.setText(getString(R.string.rows_value, settings.topBlankRows()));
+    }
+
+    private void loadSettingsApps() {
+        settingsAppLoading.setVisibility(View.VISIBLE);
+        repositoryExecutor.execute(() -> {
+            List<AppEntry> discovered = appRepository.discoverLaunchableApps();
+            mainHandler.post(() -> {
+                if (!isSettingsOpen() || isFinishing()) {
+                    return;
+                }
+                discoveredApps = discovered;
+                List<String> labels = new ArrayList<>(discovered.size());
+                for (AppEntry entry : discovered) {
+                    labels.add(entry.label());
+                }
+                settingsAppList.setAdapter(new ArrayAdapter<>(
+                        this, android.R.layout.simple_list_item_multiple_choice, labels));
+                for (int index = 0; index < discovered.size(); index++) {
+                    settingsAppList.setItemChecked(
+                            index, state.componentIds().contains(discovered.get(index).componentId()));
+                }
+                settingsAppLoading.setVisibility(View.GONE);
+            });
+        });
+    }
+
+    private void toggleSettingsApp(int position) {
+        if (position < 0 || position >= discoveredApps.size()) {
+            return;
+        }
+        List<String> ids = new ArrayList<>(state.componentIds());
+        String componentId = discoveredApps.get(position).componentId();
+        if (ids.remove(componentId)) {
+            settingsAppList.setItemChecked(position, false);
+        } else {
+            ids.add(componentId);
+            settingsAppList.setItemChecked(position, true);
+        }
+        state = new LauncherState(ids, state.settings(), state.wallpaperUri());
+        preferences.save(state);
+        refreshDesktop();
+    }
+
+    private void chooseWallpaper() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("image/*")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_WALLPAPER);
+        } catch (ActivityNotFoundException failure) {
+            Toast.makeText(this, R.string.wallpaper_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_WALLPAPER || resultCode != RESULT_OK || data == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        if (uri == null) {
+            return;
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            state = new LauncherState(state.componentIds(), state.settings(), uri.toString());
+            preferences.save(state);
+            loadWallpaper();
+            Toast.makeText(this, R.string.wallpaper_saved, Toast.LENGTH_SHORT).show();
+        } catch (SecurityException failure) {
+            Toast.makeText(this, R.string.wallpaper_failed, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private boolean animateSwap(int from, int to, View fromView, View toView) {
@@ -479,23 +725,37 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private void focusPosition(int position) {
+        activatePosition(position, false);
+    }
+
+    private void activatePosition(int position, boolean animate) {
+        if (position < 0 || position >= entries.size()) {
+            return;
+        }
+        View previous = visibleCardAt(activePosition);
+        if (previous instanceof AppCardView && activePosition != position) {
+            ((AppCardView) previous).setActive(false, animate);
+        }
+        activePosition = position;
+        adapter.setActivePosition(position);
+        gridView.setActivePosition(position);
         gridView.setSelection(position);
+        gridView.requestFocus();
         View visible = visibleCardAt(position);
-        if (visible != null && visible.requestFocus()) {
+        if (visible instanceof AppCardView) {
+            ((AppCardView) visible).setActive(true, animate);
             return;
         }
         gridView.post(() -> {
             View child = visibleCardAt(position);
-            if (child != null) {
-                child.requestFocus();
-            } else {
-                gridView.requestFocus();
+            if (child instanceof AppCardView && position == activePosition) {
+                ((AppCardView) child).setActive(true, animate);
             }
         });
     }
 
     private String focusedComponentId() {
-        int position = gridView == null ? -1 : gridView.getSelectedItemPosition();
+        int position = activePosition;
         if (position >= 0 && position < entries.size()) {
             return entries.get(position).componentId();
         }

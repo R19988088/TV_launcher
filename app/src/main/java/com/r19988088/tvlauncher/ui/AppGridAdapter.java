@@ -25,6 +25,7 @@ public final class AppGridAdapter extends BaseAdapter {
     private int cardWidth;
     private int cardHeight;
     private int iconScalePercent = 60;
+    private int activePosition = -1;
 
     public AppGridAdapter(Context context, BannerLoader bannerLoader, Listener listener) {
         this.context = context;
@@ -59,6 +60,10 @@ public final class AppGridAdapter extends BaseAdapter {
 
     public void swap(int from, int to) {
         Collections.swap(entries, from, to);
+    }
+
+    public void setActivePosition(int position) {
+        activePosition = position;
     }
 
     public void bindView(int position, AppCardView card) {
@@ -104,6 +109,7 @@ public final class AppGridAdapter extends BaseAdapter {
                 iconScalePercent).fileName();
         card.configure(columnWidth, cardWidth, cardHeight);
         card.bind(entry.componentId(), requestKey, entry.label());
+        card.setActive(position == activePosition, false);
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

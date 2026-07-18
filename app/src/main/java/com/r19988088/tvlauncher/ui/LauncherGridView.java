@@ -8,6 +8,8 @@ import android.view.View;
 import android.widget.GridView;
 
 public final class LauncherGridView extends GridView {
+    private int activePosition = -1;
+
     public LauncherGridView(Context context, AttributeSet attributes) {
         super(context, attributes);
         setClipChildren(false);
@@ -21,7 +23,7 @@ public final class LauncherGridView extends GridView {
 
     @Override
     protected int getChildDrawingOrder(int childCount, int drawingPosition) {
-        int focusedIndex = focusedChildIndex();
+        int focusedIndex = activeChildIndex();
         if (focusedIndex < 0) {
             return drawingPosition;
         }
@@ -31,28 +33,18 @@ public final class LauncherGridView extends GridView {
         return drawingPosition >= focusedIndex ? drawingPosition + 1 : drawingPosition;
     }
 
-    private int focusedChildIndex() {
-        View focused = findFocus();
-        if (focused == null) {
-            return -1;
-        }
+    public void setActivePosition(int position) {
+        activePosition = position;
+        invalidate();
+    }
+
+    private int activeChildIndex() {
         for (int index = 0; index < getChildCount(); index++) {
             View child = getChildAt(index);
-            if (child == focused || isDescendant(child, focused)) {
+            if (getPositionForView(child) == activePosition) {
                 return index;
             }
         }
         return -1;
-    }
-
-    private static boolean isDescendant(View parent, View child) {
-        android.view.ViewParent current = child.getParent();
-        while (current instanceof View) {
-            if (current == parent) {
-                return true;
-            }
-            current = current.getParent();
-        }
-        return false;
     }
 }

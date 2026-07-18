@@ -11,7 +11,7 @@ public final class LauncherStateCodecTest {
     public void roundTripPreservesOrderAndVisualSettings() {
         LauncherState state = new LauncherState(
                 Arrays.asList("one/.Main", "two/.Tv"),
-                new LauncherSettings(7, 110, 70),
+                new LauncherSettings(7, 110, 70, 4),
                 "content://wallpaper/current");
 
         LauncherState decoded = LauncherStateCodec.decode(LauncherStateCodec.encode(state));
@@ -20,6 +20,7 @@ public final class LauncherStateCodecTest {
         assertEquals(7, decoded.settings().columns());
         assertEquals(110, decoded.settings().cardScalePercent());
         assertEquals(70, decoded.settings().iconScalePercent());
+        assertEquals(4, decoded.settings().topBlankRows());
         assertEquals("content://wallpaper/current", decoded.wallpaperUri());
     }
 
@@ -29,6 +30,7 @@ public final class LauncherStateCodecTest {
 
         assertEquals(0, decoded.componentIds().size());
         assertEquals(6, decoded.settings().columns());
+        assertEquals(2, decoded.settings().topBlankRows());
         assertEquals("", decoded.wallpaperUri());
     }
 }

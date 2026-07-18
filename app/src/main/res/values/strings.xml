@@ -10,6 +10,8 @@
     <string name="columns_title">每行数量</string>
     <string name="card_size_title">卡片尺寸</string>
     <string name="icon_size_title">图标尺寸</string>
+    <string name="top_blank_rows_title">顶部空位</string>
+    <string name="rows_value">%1$d 行</string>
     <string name="choose_wallpaper">选择静态壁纸</string>
     <string name="apps_title">添加到桌面</string>
     <string name="wallpaper_saved">壁纸已保存</string>

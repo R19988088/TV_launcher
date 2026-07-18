@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.PathInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.AbsListView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -20,6 +21,8 @@ public final class AppCardView extends FrameLayout {
     private static final long ANIMATION_DURATION_MS = 180L;
     private static final PathInterpolator FOCUS_INTERPOLATOR =
             new PathInterpolator(0.20f, 0f, 0f, 1f);
+    private static final OvershootInterpolator ACTIVE_INTERPOLATOR =
+            new OvershootInterpolator(0.85f);
 
     private final ImageView imageView;
     private final TextView labelView;
@@ -36,7 +39,7 @@ public final class AppCardView extends FrameLayout {
         density = getResources().getDisplayMetrics().density;
         setClipChildren(false);
         setClipToPadding(false);
-        setFocusable(true);
+        setFocusable(false);
         setClickable(true);
         setLongClickable(true);
         setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
@@ -67,15 +70,6 @@ public final class AppCardView extends FrameLayout {
         labelView.setShadowLayer(dp(5), 0f, dp(2), 0xcc000000);
         addView(labelView);
 
-        setOnFocusChangeListener(new OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean hasFocus) {
-                applyVisualState(hasFocus ? CardVisualState.focused() : CardVisualState.unfocused(), true);
-                if (getParent() instanceof View) {
-                    ((View) getParent()).invalidate();
-                }
-            }
-        });
         applyVisualState(CardVisualState.unfocused(), false);
     }
 
@@ -111,7 +105,15 @@ public final class AppCardView extends FrameLayout {
         labelView.setText(label);
         setContentDescription(label);
         imageView.setImageDrawable(new ColorDrawable(0x992b3540));
-        applyVisualState(isFocused() ? CardVisualState.focused() : CardVisualState.unfocused(), false);
+        applyVisualState(CardVisualState.unfocused(), false);
+    }
+
+    public void setActive(boolean active, boolean animate) {
+        CardVisualState state = active ? CardVisualState.focused() : CardVisualState.unfocused();
+        applyVisualState(state, animate, active);
+        if (getParent() instanceof View) {
+            ((View) getParent()).invalidate();
+        }
     }
 
     public void setImageIfBound(String requestKey, String componentId, Bitmap bitmap) {
@@ -124,6 +126,10 @@ public final class AppCardView extends FrameLayout {
     }
 
     private void applyVisualState(CardVisualState state, boolean animate) {
+        applyVisualState(state, animate, false);
+    }
+
+    private void applyVisualState(CardVisualState state, boolean animate, boolean active) {
         float translationY = dp(state.translationYDp());
         float elevation = dp(state.elevationDp());
         imageView.animate().cancel();
@@ -143,7 +149,7 @@ public final class AppCardView extends FrameLayout {
                 .translationY(translationY)
                 .translationZ(Math.max(0f, elevation - dp(1)))
                 .setDuration(ANIMATION_DURATION_MS)
-                .setInterpolator(FOCUS_INTERPOLATOR)
+                .setInterpolator(active ? ACTIVE_INTERPOLATOR : FOCUS_INTERPOLATOR)
                 .withLayer()
                 .start();
         imageView.setElevation(dp(1));

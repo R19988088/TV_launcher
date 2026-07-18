@@ -35,6 +35,7 @@ public final class GridMetrics {
             int configuredColumns,
             int itemCount,
             int cardScalePercent,
+            int topBlankRows,
             float density) {
         int safeColumns = Math.max(1, configuredColumns);
         int displayColumns = Math.max(1, Math.min(safeColumns, itemCount));
@@ -45,6 +46,12 @@ public final class GridMetrics {
                 - horizontalSpacing * (safeColumns - 1);
         int columnWidth = Math.max(1, available / safeColumns);
         int cardWidth = Math.max(1, columnWidth * cardScalePercent / 100);
+        int cardHeight = cardWidth * 9 / 16;
+        int verticalSpacing = Math.round(viewportHeight / 54f);
+        int rowHeight = cardHeight + Math.round(42f * density);
+        int topPadding = Math.min(
+                topBlankRows * (rowHeight + verticalSpacing),
+                Math.max(0, viewportHeight - rowHeight - verticalSpacing));
         int groupWidth = columnWidth * displayColumns
                 + horizontalSpacing * (displayColumns - 1);
         int horizontalPadding = Math.max(0, (viewportWidth - groupWidth) / 2);
@@ -53,9 +60,9 @@ public final class GridMetrics {
                 horizontalSpacing,
                 columnWidth,
                 cardWidth,
-                cardWidth * 9 / 16,
-                Math.round(viewportHeight / 15f),
-                Math.round(viewportHeight / 54f),
+                cardHeight,
+                topPadding,
+                verticalSpacing,
                 displayColumns);
     }
 

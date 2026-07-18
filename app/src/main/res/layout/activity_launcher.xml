@@ -41,4 +41,86 @@
         android:text="@string/empty_prompt"
         android:textColor="#F2FFFFFF"
         android:textSize="26sp" />
+
+    <LinearLayout
+        android:id="@+id/settings_panel"
+        android:layout_width="400dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#EE20252A"
+        android:elevation="24dp"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text="@string/settings_title"
+            android:textColor="#FFFFFFFF"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/columns_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
+            <Button android:id="@+id/columns_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <TextView android:id="@+id/columns_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
+            <Button android:id="@+id/columns_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/card_size_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
+            <Button android:id="@+id/card_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <TextView android:id="@+id/card_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
+            <Button android:id="@+id/card_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/icon_size_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
+            <Button android:id="@+id/icon_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <TextView android:id="@+id/icon_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
+            <Button android:id="@+id/icon_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/top_blank_rows_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
+            <Button android:id="@+id/top_rows_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <TextView android:id="@+id/top_rows_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
+            <Button android:id="@+id/top_rows_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/wallpaper_button"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="6dp"
+            android:text="@string/choose_wallpaper" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="6dp"
+            android:text="@string/apps_title"
+            android:textColor="#FFFFFFFF"
+            android:textSize="19sp"
+            android:textStyle="bold" />
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+            <ListView
+                android:id="@+id/settings_app_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:choiceMode="multipleChoice"
+                android:divider="#24FFFFFF"
+                android:dividerHeight="1dp"
+                android:scrollbars="none" />
+            <ProgressBar
+                android:id="@+id/settings_app_loading"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_gravity="center" />
+        </FrameLayout>
+    </LinearLayout>
 </FrameLayout>
