@@ -36,23 +36,37 @@ import com.r19988088.tvlauncher.ui.AppGridAdapter;
 import com.r19988088.tvlauncher.ui.GridFocusNavigator;
 import com.r19988088.tvlauncher.ui.GridMetrics;
 import com.r19988088.tvlauncher.ui.LauncherGridLayout;
+import com.r19988088.tvlauncher.weather.WeatherClient;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @SuppressLint("GestureBackNavigation")
 public final class LauncherActivity extends Activity implements AppGridAdapter.Listener {
     private static final long REORDER_ANIMATION_DURATION_MS = 160L;
     private static final int REQUEST_WALLPAPER = 20;
+    private static final int FIXED_ICON_SCALE_PERCENT = 60;
+    private static final long WEATHER_REFRESH_MS = 60L * 60L * 1000L;
+    private static final long WEATHER_RETRY_MS = 5L * 60L * 1000L;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService repositoryExecutor = Executors.newSingleThreadExecutor();
+    private final ThreadPoolExecutor weatherExecutor = new ThreadPoolExecutor(
+            0, 1, 10L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(1),
+            new ThreadPoolExecutor.DiscardPolicy());
+    private final SimpleDateFormat clockFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     private LauncherGridLayout gridView;
     private TextView emptyPrompt;
@@ -62,8 +76,10 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private ProgressBar settingsAppLoading;
     private TextView columnsValue;
     private TextView cardValue;
-    private TextView iconValue;
+    private TextView spacingValue;
     private TextView topRowsValue;
+    private TextView clockView;
+    private TextView weatherView;
     private LauncherPreferences preferences;
     private AppRepository appRepository;
     private BannerLoader bannerLoader;
@@ -78,8 +94,26 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private int moveAnimationGeneration;
     private int loadGeneration;
     private int wallpaperLoadGeneration;
+    private boolean weatherRequestRunning;
+    private boolean activityResumed;
+    private long nextWeatherRefreshAt;
     private Bitmap customWallpaper;
     private boolean packageReceiverRegistered;
+    private final Runnable clockUpdater = new Runnable() {
+        @Override
+        public void run() {
+            if (clockView == null) return;
+            clockView.setText(clockFormat.format(new Date()));
+            long delay = 60_000L - System.currentTimeMillis() % 60_000L;
+            mainHandler.postDelayed(this, delay);
+        }
+    };
+    private final Runnable weatherUpdater = new Runnable() {
+        @Override
+        public void run() {
+            refreshWeather();
+        }
+    };
     private final BroadcastReceiver packageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -113,8 +147,10 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         settingsAppLoading = findViewById(R.id.settings_app_loading);
         columnsValue = findViewById(R.id.columns_value);
         cardValue = findViewById(R.id.card_value);
-        iconValue = findViewById(R.id.icon_value);
+        spacingValue = findViewById(R.id.spacing_value);
         topRowsValue = findViewById(R.id.top_rows_value);
+        clockView = findViewById(R.id.clock);
+        weatherView = findViewById(R.id.weather);
         preferences = new LauncherPreferences(this);
         appRepository = new AppRepository(this);
         bannerLoader = new BannerLoader(this);
@@ -146,12 +182,23 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     @Override
     protected void onResume() {
         super.onResume();
+        activityResumed = true;
         enterImmersiveMode();
         discardMoveSession();
         state = preferences.load();
         configureGrid();
         loadWallpaper();
         refreshDesktop();
+        startClock();
+        refreshWeather();
+    }
+
+    @Override
+    protected void onPause() {
+        activityResumed = false;
+        mainHandler.removeCallbacks(clockUpdater);
+        mainHandler.removeCallbacks(weatherUpdater);
+        super.onPause();
     }
 
     @Override
@@ -262,7 +309,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         loadGeneration++;
         wallpaperLoadGeneration++;
         mainHandler.removeCallbacks(centerLongPress);
+        mainHandler.removeCallbacks(weatherUpdater);
         repositoryExecutor.shutdownNow();
+        weatherExecutor.shutdownNow();
         bannerLoader.close();
         if (customWallpaper != null) {
             customWallpaper.recycle();
@@ -321,13 +370,14 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 entries.size(),
                 state.settings().cardScalePercent(),
                 state.settings().topBlankRows(),
+                state.settings().spacingScalePercent(),
                 getResources().getDisplayMetrics().density);
         gridView.setMetrics(metrics);
         adapter.setCardMetrics(
                 metrics.columnWidth(),
                 metrics.cardWidth(),
                 metrics.cardHeight(),
-                state.settings().iconScalePercent());
+                FIXED_ICON_SCALE_PERCENT);
     }
 
     private boolean handleNavigationKey(int keyCode) {
@@ -494,6 +544,45 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         return settingsPanel != null && settingsPanel.getVisibility() == View.VISIBLE;
     }
 
+    private void startClock() {
+        mainHandler.removeCallbacks(clockUpdater);
+        clockUpdater.run();
+    }
+
+    private void refreshWeather() {
+        mainHandler.removeCallbacks(weatherUpdater);
+        long remaining = nextWeatherRefreshAt - System.currentTimeMillis();
+        if (remaining > 0L) {
+            mainHandler.postDelayed(weatherUpdater, remaining);
+            return;
+        }
+        if (weatherRequestRunning) return;
+        weatherRequestRunning = true;
+        nextWeatherRefreshAt = System.currentTimeMillis() + WEATHER_RETRY_MS;
+        weatherExecutor.execute(() -> {
+            String result = null;
+            try {
+                result = new WeatherClient().fetch();
+            } catch (IOException ignored) {
+                // Weather is optional and must never delay launcher startup.
+            }
+            final String weather = result;
+            mainHandler.post(() -> {
+                weatherRequestRunning = false;
+                if (isFinishing() || isDestroyed()) return;
+                if (weather != null) {
+                    weatherView.setText(weather);
+                    weatherView.setVisibility(View.VISIBLE);
+                    nextWeatherRefreshAt = System.currentTimeMillis() + WEATHER_REFRESH_MS;
+                }
+                if (activityResumed) {
+                    mainHandler.postDelayed(weatherUpdater,
+                            Math.max(1L, nextWeatherRefreshAt - System.currentTimeMillis()));
+                }
+            });
+        });
+    }
+
     private boolean handleCenterKey(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             if (event.getRepeatCount() == 0) {
@@ -527,8 +616,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         findViewById(R.id.columns_plus).setOnClickListener(view -> changeColumns(1));
         findViewById(R.id.card_minus).setOnClickListener(view -> changeCardScale(-5));
         findViewById(R.id.card_plus).setOnClickListener(view -> changeCardScale(5));
-        findViewById(R.id.icon_minus).setOnClickListener(view -> changeIconScale(-5));
-        findViewById(R.id.icon_plus).setOnClickListener(view -> changeIconScale(5));
+        findViewById(R.id.spacing_minus).setOnClickListener(view -> changeSpacing(-10));
+        findViewById(R.id.spacing_plus).setOnClickListener(view -> changeSpacing(10));
         findViewById(R.id.top_rows_minus).setOnClickListener(view -> changeTopRows(-1));
         findViewById(R.id.top_rows_plus).setOnClickListener(view -> changeTopRows(1));
         findViewById(R.id.wallpaper_button).setOnClickListener(view -> chooseWallpaper());
@@ -542,7 +631,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 current.columns() + delta,
                 current.cardScalePercent(),
                 current.iconScalePercent(),
-                current.topBlankRows()));
+                current.topBlankRows(),
+                current.spacingScalePercent()));
     }
 
     private void changeCardScale(int delta) {
@@ -551,16 +641,18 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 current.columns(),
                 current.cardScalePercent() + delta,
                 current.iconScalePercent(),
-                current.topBlankRows()));
+                current.topBlankRows(),
+                current.spacingScalePercent()));
     }
 
-    private void changeIconScale(int delta) {
+    private void changeSpacing(int delta) {
         LauncherSettings current = state.settings();
         applySettings(new LauncherSettings(
                 current.columns(),
                 current.cardScalePercent(),
-                current.iconScalePercent() + delta,
-                current.topBlankRows()));
+                current.iconScalePercent(),
+                current.topBlankRows(),
+                current.spacingScalePercent() + delta));
     }
 
     private void changeTopRows(int delta) {
@@ -569,7 +661,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 current.columns(),
                 current.cardScalePercent(),
                 current.iconScalePercent(),
-                current.topBlankRows() + delta));
+                current.topBlankRows() + delta,
+                current.spacingScalePercent()));
     }
 
     private void applySettings(LauncherSettings settings) {
@@ -579,14 +672,13 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         adapter.setActivePosition(activePosition);
         rebuildGrid();
         updateSettingsValues();
-        activatePosition(Math.max(0, activePosition), false);
     }
 
     private void updateSettingsValues() {
         LauncherSettings settings = state.settings();
         columnsValue.setText(String.valueOf(settings.columns()));
         cardValue.setText(getString(R.string.percent_value, settings.cardScalePercent()));
-        iconValue.setText(getString(R.string.percent_value, settings.iconScalePercent()));
+        spacingValue.setText(getString(R.string.percent_value, settings.spacingScalePercent()));
         topRowsValue.setText(getString(R.string.rows_value, settings.topBlankRows()));
     }
 
@@ -731,7 +823,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         activePosition = position;
         adapter.setActivePosition(position);
         gridView.setActivePosition(position);
-        gridView.requestFocus();
+        if (!isSettingsOpen()) {
+            gridView.requestFocus();
+        }
         View visible = visibleCardAt(position);
         if (visible instanceof AppCardView) {
             ((AppCardView) visible).setActive(true, animate);

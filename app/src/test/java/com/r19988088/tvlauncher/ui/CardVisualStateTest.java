@@ -10,7 +10,7 @@ public final class CardVisualStateTest {
         CardVisualState state = CardVisualState.focused();
 
         assertEquals(1.12f, state.scale(), 0.001f);
-        assertEquals(-6f, state.translationYDp(), 0.001f);
+        assertEquals(-1f, state.translationYDp(), 0.001f);
         assertEquals(24f, state.elevationDp(), 0.001f);
         assertEquals(1f, state.labelAlpha(), 0.001f);
     }
@@ -21,7 +21,7 @@ public final class CardVisualStateTest {
 
         assertEquals(1f, state.scale(), 0.001f);
         assertEquals(0f, state.translationYDp(), 0.001f);
-        assertEquals(1f, state.elevationDp(), 0.001f);
+        assertEquals(1.3f, state.elevationDp(), 0.001f);
         assertEquals(0f, state.labelAlpha(), 0.001f);
     }
 }

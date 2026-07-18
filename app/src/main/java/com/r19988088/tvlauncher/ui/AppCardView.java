@@ -131,31 +131,37 @@ public final class AppCardView extends FrameLayout {
 
     private void applyVisualState(CardVisualState state, boolean animate, boolean active) {
         float translationY = dp(state.translationYDp());
-        float elevation = dp(state.elevationDp());
+        float elevation = state.elevationDp() * density;
         imageView.animate().cancel();
         labelView.animate().cancel();
         if (!animate) {
             imageView.setScaleX(state.scale());
             imageView.setScaleY(state.scale());
             imageView.setTranslationY(translationY);
-            imageView.setElevation(dp(1));
-            imageView.setTranslationZ(Math.max(0f, elevation - dp(1)));
+            imageView.setElevation(density);
+            imageView.setTranslationZ(Math.max(0f, elevation - density));
             labelView.setAlpha(state.labelAlpha());
+            labelView.setTranslationY(state.labelAlpha() > 0f ? 0f : dp(6));
             return;
         }
         imageView.animate()
                 .scaleX(state.scale())
                 .scaleY(state.scale())
                 .translationY(translationY)
-                .translationZ(Math.max(0f, elevation - dp(1)))
+                .translationZ(Math.max(0f, elevation - density))
                 .setDuration(ANIMATION_DURATION_MS)
                 .setInterpolator(active ? ACTIVE_INTERPOLATOR : FOCUS_INTERPOLATOR)
                 .withLayer()
                 .start();
-        imageView.setElevation(dp(1));
+        imageView.setElevation(density);
+        if (active && labelView.getAlpha() == 0f) {
+            labelView.setTranslationY(dp(6));
+        }
         labelView.animate()
                 .alpha(state.labelAlpha())
-                .setDuration(ANIMATION_DURATION_MS)
+                .translationY(active ? 0f : -dp(4))
+                .setStartDelay(active ? 45L : 0L)
+                .setDuration(active ? 170L : 110L)
                 .setInterpolator(FOCUS_INTERPOLATOR)
                 .start();
     }

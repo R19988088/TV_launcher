@@ -58,4 +58,15 @@ public final class GridMetricsTest {
         assertEquals(492, twoRows.topPadding());
         assertEquals(834, fiveRows.topPadding());
     }
+
+    @Test
+    public void spacingScaleChangesBothAxesWithoutBreakingCentering() {
+        GridMetrics metrics = GridMetrics.calculate(1920, 1080, 6, 3, 100, 0, 150, 2f);
+
+        assertEquals(72, metrics.horizontalSpacing());
+        assertEquals(30, metrics.verticalSpacing());
+        assertEquals(
+                (1920 - metrics.columnWidth() * 3 - metrics.horizontalSpacing() * 2) / 2,
+                metrics.horizontalPadding());
+    }
 }

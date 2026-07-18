@@ -18,11 +18,11 @@ public final class CardVisualState {
     }
 
     public static CardVisualState focused() {
-        return new CardVisualState(1.12f, -6f, 24f, 1f);
+        return new CardVisualState(1.12f, -1f, 24f, 1f);
     }
 
     public static CardVisualState unfocused() {
-        return new CardVisualState(1f, 0f, 1f, 0f);
+        return new CardVisualState(1f, 0f, 1.3f, 0f);
     }
 
     public float scale() {

@@ -9,7 +9,7 @@
     <string name="settings_title">桌面设置</string>
     <string name="columns_title">每行数量</string>
     <string name="card_size_title">卡片尺寸</string>
-    <string name="icon_size_title">图标尺寸</string>
+    <string name="spacing_title">卡片间距</string>
     <string name="top_blank_rows_title">顶部空位</string>
     <string name="rows_value">%1$d 行</string>
     <string name="choose_wallpaper">选择静态壁纸</string>

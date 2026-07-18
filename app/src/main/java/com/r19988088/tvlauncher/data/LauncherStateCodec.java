@@ -18,6 +18,7 @@ public final class LauncherStateCodec {
             object.put("cardScale", state.settings().cardScalePercent());
             object.put("iconScale", state.settings().iconScalePercent());
             object.put("topBlankRows", state.settings().topBlankRows());
+            object.put("spacingScale", state.settings().spacingScalePercent());
             object.put("wallpaper", state.wallpaperUri());
             return object.toString();
         } catch (JSONException impossible) {
@@ -45,7 +46,8 @@ public final class LauncherStateCodec {
                     object.optInt("columns", LauncherSettings.DEFAULT_COLUMNS),
                     object.optInt("cardScale", LauncherSettings.DEFAULT_CARD_SCALE_PERCENT),
                     object.optInt("iconScale", LauncherSettings.DEFAULT_ICON_SCALE_PERCENT),
-                    object.optInt("topBlankRows", LauncherSettings.DEFAULT_TOP_BLANK_ROWS));
+                    object.optInt("topBlankRows", LauncherSettings.DEFAULT_TOP_BLANK_ROWS),
+                    object.optInt("spacingScale", LauncherSettings.DEFAULT_SPACING_SCALE_PERCENT));
             return new LauncherState(
                     components, settings, object.optString("wallpaper", ""));
         } catch (JSONException malformed) {
