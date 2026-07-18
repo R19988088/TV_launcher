@@ -12,6 +12,9 @@
         android:required="false" />
 
     <queries>
+        <package android:name="com.mitv.tvhome" />
+        <package android:name="com.xiaomi.voicecontrol" />
+        <package android:name="com.xiaomi.mitv.appstore" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LEANBACK_LAUNCHER" />

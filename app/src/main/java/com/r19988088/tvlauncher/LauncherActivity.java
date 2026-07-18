@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -21,6 +22,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.r19988088.tvlauncher.data.AppRepository;
@@ -31,6 +33,7 @@ import com.r19988088.tvlauncher.image.BannerLoader;
 import com.r19988088.tvlauncher.model.AppEntry;
 import com.r19988088.tvlauncher.model.LauncherSettings;
 import com.r19988088.tvlauncher.model.ReorderSession;
+import com.r19988088.tvlauncher.system.SystemPackageControl;
 import com.r19988088.tvlauncher.ui.AppCardView;
 import com.r19988088.tvlauncher.ui.AppGridAdapter;
 import com.r19988088.tvlauncher.ui.GridFocusNavigator;
@@ -52,11 +55,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import rikka.shizuku.Shizuku;
 
 @SuppressLint("GestureBackNavigation")
 public final class LauncherActivity extends Activity implements AppGridAdapter.Listener {
     private static final long REORDER_ANIMATION_DURATION_MS = 160L;
     private static final int REQUEST_WALLPAPER = 20;
+    private static final int REQUEST_SHIZUKU = 21;
     private static final int FIXED_ICON_SCALE_PERCENT = 60;
     private static final long WEATHER_REFRESH_MS = 60L * 60L * 1000L;
     private static final long WEATHER_RETRY_MS = 5L * 60L * 1000L;
@@ -80,10 +85,14 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private TextView topRowsValue;
     private TextView clockView;
     private TextView weatherView;
+    private Switch tvHomeSwitch;
+    private Switch voiceControlSwitch;
+    private Switch appStoreSwitch;
     private LauncherPreferences preferences;
     private AppRepository appRepository;
     private BannerLoader bannerLoader;
     private AppGridAdapter adapter;
+    private SystemPackageControl systemPackageControl;
     private LauncherState state = LauncherState.defaults();
     private List<AppEntry> entries = new ArrayList<>();
     private List<AppEntry> discoveredApps = new ArrayList<>();
@@ -99,6 +108,22 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private long nextWeatherRefreshAt;
     private Bitmap customWallpaper;
     private boolean packageReceiverRegistered;
+    private boolean updatingSystemSwitches;
+    private Switch pendingSystemSwitch;
+    private String pendingSystemPackage;
+    private boolean pendingSystemDisabled;
+    private final Shizuku.OnBinderReceivedListener shizukuBinderListener =
+            this::updateSystemSwitches;
+    private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != REQUEST_SHIZUKU || pendingSystemSwitch == null) return;
+                if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                    executeSystemPackageChange();
+                } else {
+                    clearPendingSystemChange();
+                    updateSystemSwitches();
+                }
+            };
     private final Runnable clockUpdater = new Runnable() {
         @Override
         public void run() {
@@ -151,11 +176,17 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         topRowsValue = findViewById(R.id.top_rows_value);
         clockView = findViewById(R.id.clock);
         weatherView = findViewById(R.id.weather);
+        tvHomeSwitch = findViewById(R.id.disable_tvhome);
+        voiceControlSwitch = findViewById(R.id.disable_voice_control);
+        appStoreSwitch = findViewById(R.id.disable_appstore);
         preferences = new LauncherPreferences(this);
         appRepository = new AppRepository(this);
         bannerLoader = new BannerLoader(this);
         adapter = new AppGridAdapter(this, bannerLoader, this);
+        systemPackageControl = new SystemPackageControl(this);
         setupSettingsPanel();
+        Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener);
+        Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
         gridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
             public void onLayoutChange(
@@ -312,6 +343,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         mainHandler.removeCallbacks(weatherUpdater);
         repositoryExecutor.shutdownNow();
         weatherExecutor.shutdownNow();
+        Shizuku.removeBinderReceivedListener(shizukuBinderListener);
+        Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
         bannerLoader.close();
         if (customWallpaper != null) {
             customWallpaper.recycle();
@@ -520,6 +553,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private void openSettings() {
         discardMoveSession();
         updateSettingsValues();
+        updateSystemSwitches();
         settingsPanel.setVisibility(View.VISIBLE);
         settingsPanel.setAlpha(0f);
         settingsPanel.setTranslationX(dp(36));
@@ -626,8 +660,85 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         findViewById(R.id.top_rows_minus).setOnClickListener(view -> changeTopRows(-1));
         findViewById(R.id.top_rows_plus).setOnClickListener(view -> changeTopRows(1));
         findViewById(R.id.wallpaper_button).setOnClickListener(view -> chooseWallpaper());
+        tvHomeSwitch.setOnCheckedChangeListener((button, checked) ->
+                onSystemSwitchChanged(tvHomeSwitch, "com.mitv.tvhome", checked));
+        voiceControlSwitch.setOnCheckedChangeListener((button, checked) ->
+                onSystemSwitchChanged(voiceControlSwitch, "com.xiaomi.voicecontrol", checked));
+        appStoreSwitch.setOnCheckedChangeListener((button, checked) ->
+                onSystemSwitchChanged(appStoreSwitch, "com.xiaomi.mitv.appstore", checked));
         settingsAppList.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         settingsAppList.setOnItemClickListener((parent, view, position, id) -> toggleSettingsApp(position));
+    }
+
+    private void onSystemSwitchChanged(Switch source, String packageName, boolean disabled) {
+        if (updatingSystemSwitches) return;
+        pendingSystemSwitch = source;
+        pendingSystemPackage = packageName;
+        pendingSystemDisabled = disabled;
+        if (!Shizuku.pingBinder()) {
+            clearPendingSystemChange();
+            updateSystemSwitches();
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.shizuku_required_title)
+                    .setMessage(R.string.shizuku_required_message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return;
+        }
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(REQUEST_SHIZUKU);
+            return;
+        }
+        executeSystemPackageChange();
+    }
+
+    private void executeSystemPackageChange() {
+        final Switch source = pendingSystemSwitch;
+        final String packageName = pendingSystemPackage;
+        final boolean disabled = pendingSystemDisabled;
+        if (source == null || packageName == null) return;
+        source.setEnabled(false);
+        clearPendingSystemChange();
+        repositoryExecutor.execute(() -> {
+            boolean success;
+            try {
+                success = systemPackageControl.setDisabled(packageName, disabled);
+            } catch (IOException | InterruptedException | RuntimeException failure) {
+                success = false;
+                if (failure instanceof InterruptedException) Thread.currentThread().interrupt();
+            }
+            final boolean changed = success;
+            mainHandler.post(() -> {
+                updateSystemSwitches();
+                if (!changed) {
+                    Toast.makeText(this, R.string.system_control_failed, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    private void clearPendingSystemChange() {
+        pendingSystemSwitch = null;
+        pendingSystemPackage = null;
+    }
+
+    private void updateSystemSwitches() {
+        if (tvHomeSwitch == null || systemPackageControl == null) return;
+        updatingSystemSwitches = true;
+        updateSystemSwitch(tvHomeSwitch, "com.mitv.tvhome");
+        updateSystemSwitch(voiceControlSwitch, "com.xiaomi.voicecontrol");
+        updateSystemSwitch(appStoreSwitch, "com.xiaomi.mitv.appstore");
+        updatingSystemSwitches = false;
+    }
+
+    private void updateSystemSwitch(Switch target, String packageName) {
+        try {
+            target.setChecked(systemPackageControl.isDisabled(packageName));
+            target.setEnabled(true);
+        } catch (IllegalArgumentException missing) {
+            target.setChecked(false);
+            target.setEnabled(false);
+        }
     }
 
     private void changeColumns(int delta) {
