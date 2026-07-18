@@ -118,7 +118,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             (requestCode, grantResult) -> {
                 if (requestCode != REQUEST_SHIZUKU || pendingSystemSwitch == null) return;
                 if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                    executeSystemPackageChange();
+                    executeShizukuSystemPackageChange();
                 } else {
                     clearPendingSystemChange();
                     updateSystemSwitches();
@@ -675,24 +675,37 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         pendingSystemSwitch = source;
         pendingSystemPackage = packageName;
         pendingSystemDisabled = disabled;
-        if (!Shizuku.pingBinder()) {
-            clearPendingSystemChange();
-            updateSystemSwitches();
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.shizuku_required_title)
-                    .setMessage(R.string.shizuku_required_message)
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show();
-            return;
-        }
-        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-            Shizuku.requestPermission(REQUEST_SHIZUKU);
-            return;
-        }
-        executeSystemPackageChange();
+        source.setEnabled(false);
+        repositoryExecutor.execute(() -> {
+            boolean changed = systemPackageControl.setDisabledViaLocalAdb(packageName, disabled);
+            mainHandler.post(() -> finishLocalAdbSystemChange(changed));
+        });
     }
 
-    private void executeSystemPackageChange() {
+    private void finishLocalAdbSystemChange(boolean changed) {
+        if (changed) {
+            clearPendingSystemChange();
+            updateSystemSwitches();
+            return;
+        }
+        if (Shizuku.pingBinder()) {
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                executeShizukuSystemPackageChange();
+            } else {
+                Shizuku.requestPermission(REQUEST_SHIZUKU);
+            }
+            return;
+        }
+        clearPendingSystemChange();
+        updateSystemSwitches();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.adb_required_title)
+                .setMessage(R.string.adb_required_message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private void executeShizukuSystemPackageChange() {
         final Switch source = pendingSystemSwitch;
         final String packageName = pendingSystemPackage;
         final boolean disabled = pendingSystemDisabled;
@@ -702,7 +715,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         repositoryExecutor.execute(() -> {
             boolean success;
             try {
-                success = systemPackageControl.setDisabled(packageName, disabled);
+                success = systemPackageControl.setDisabledViaShizuku(packageName, disabled);
             } catch (IOException | InterruptedException | RuntimeException failure) {
                 success = false;
                 if (failure instanceof InterruptedException) Thread.currentThread().interrupt();

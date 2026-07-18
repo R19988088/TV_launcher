@@ -7,9 +7,11 @@ import rikka.shizuku.Shizuku;
 
 public final class SystemPackageControl {
     private final PackageManager packageManager;
+    private final LocalAdbShell localAdbShell;
 
     public SystemPackageControl(Context context) {
         packageManager = context.getPackageManager();
+        localAdbShell = new LocalAdbShell(context.getNoBackupFilesDir());
     }
 
     public boolean isDisabled(String packageName) {
@@ -19,7 +21,16 @@ public final class SystemPackageControl {
                 || state == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED;
     }
 
-    public boolean setDisabled(String packageName, boolean disabled)
+    public boolean setDisabledViaLocalAdb(String packageName, boolean disabled) {
+        try {
+            localAdbShell.execute(localAdbCommandFor(packageName, disabled));
+            return isDisabled(packageName) == disabled;
+        } catch (Exception failure) {
+            return false;
+        }
+    }
+
+    public boolean setDisabledViaShizuku(String packageName, boolean disabled)
             throws IOException, InterruptedException {
         Process process = Shizuku.newProcess(commandFor(packageName, disabled), null, null);
         try {
@@ -33,5 +44,9 @@ public final class SystemPackageControl {
         return disabled
                 ? new String[] {"pm", "disable-user", "--user", "0", packageName}
                 : new String[] {"pm", "enable", "--user", "0", packageName};
+    }
+
+    static String localAdbCommandFor(String packageName, boolean disabled) {
+        return String.join(" ", commandFor(packageName, disabled));
     }
 }

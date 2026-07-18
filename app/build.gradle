@@ -17,8 +17,8 @@ android {
         applicationId 'com.r19988088.tvlauncher'
         minSdk 23
         targetSdk 36
-        versionCode 13
-        versionName '0.1.12'
+        versionCode 14
+        versionName '0.1.13'
     }
 
     signingConfigs {
@@ -60,6 +60,7 @@ android {
 }
 
 dependencies {
+    implementation 'com.github.cgutman:AdbLib:d6937951eb98557c76ee2081e383d50886ce109a'
     implementation 'dev.rikka.shizuku:api:12.2.0'
     implementation 'dev.rikka.shizuku:provider:12.2.0'
     testImplementation 'junit:junit:4.13.2'

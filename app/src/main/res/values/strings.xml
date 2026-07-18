@@ -13,12 +13,14 @@
     <string name="top_blank_rows_title">顶部空位</string>
     <string name="rows_value">%1$d 行</string>
     <string name="choose_wallpaper">选择静态壁纸</string>
-    <string name="system_control_title">系统控制（需要 Shizuku / ADB 授权）</string>
+    <string name="system_control_title">系统控制（首次需要 ADB 授权）</string>
     <string name="disable_tvhome">关闭小米桌面</string>
     <string name="disable_voice_control">关闭桌面检测和小爱语音</string>
     <string name="disable_appstore">关闭小米商店自动恢复</string>
     <string name="shizuku_required_title">需要 ADB 授权</string>
     <string name="shizuku_required_message">请安装并启动 Shizuku，然后执行：\nadb shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh\n\n返回桌面后再次切换。</string>
+    <string name="adb_required_title">需要开启本机 ADB</string>
+    <string name="adb_required_message">请在电脑执行一次：\nadb tcpip 5555\n\n然后再次切换开关；电视弹出调试授权时请选择始终允许。</string>
     <string name="system_control_failed">系统设置修改失败</string>
     <string name="apps_title">添加到桌面</string>
     <string name="wallpaper_saved">壁纸已保存</string>
