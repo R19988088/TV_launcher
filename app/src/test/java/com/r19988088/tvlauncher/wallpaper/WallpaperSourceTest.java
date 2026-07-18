@@ -44,4 +44,11 @@ public final class WallpaperSourceTest {
                 WallpaperSource.desktopImage(
                         "https://4kwallpapers.com/abstract/one-1.html", html, 3840));
     }
+
+    @Test
+    public void acceptsSitesGenericBinaryImageContentType() {
+        assertEquals(true, RandomWallpaperClient.isWallpaperResponse("binary/data"));
+        assertEquals(true, RandomWallpaperClient.isWallpaperResponse("image/jpeg"));
+        assertEquals(false, RandomWallpaperClient.isWallpaperResponse("text/html"));
+    }
 }
