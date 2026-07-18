@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import org.json.JSONObject;
@@ -28,13 +29,16 @@ public final class WeatherClient {
             throw new IOException("No direct network outside VPN");
         }
         try {
-            JSONObject location = request(network, "https://ipwho.is/");
-            if (!location.optBoolean("success", false)) {
-                throw new IOException("IP location failed");
-            }
-            double latitude = location.getDouble("latitude");
-            double longitude = location.getDouble("longitude");
-            String city = location.optString("city", "");
+            MainlandIpLocation location = MainlandIpLocation.parse(
+                    requestText(network, "https://myip.ipip.net"));
+            String city = location.city();
+            String geocodingUrl = "https://geocoding-api.open-meteo.com/v1/search?name="
+                    + URLEncoder.encode(city, StandardCharsets.UTF_8.name())
+                    + "&count=1&language=zh&format=json";
+            JSONObject geocoding = request(network, geocodingUrl);
+            JSONObject coordinates = geocoding.getJSONArray("results").getJSONObject(0);
+            double latitude = coordinates.getDouble("latitude");
+            double longitude = coordinates.getDouble("longitude");
             String url = String.format(Locale.US,
                     "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
                             + "&current=temperature_2m,weather_code&timezone=auto",
@@ -45,7 +49,7 @@ public final class WeatherClient {
             return city.isEmpty()
                     ? weather + "  " + temperature + "°"
                     : city + "  " + weather + "  " + temperature + "°";
-        } catch (org.json.JSONException malformed) {
+        } catch (org.json.JSONException | IllegalArgumentException malformed) {
             throw new IOException("Malformed weather response", malformed);
         }
     }
@@ -71,10 +75,19 @@ public final class WeatherClient {
     }
 
     private static JSONObject request(Network network, String address) throws IOException {
+        try {
+            return new JSONObject(requestText(network, address));
+        } catch (org.json.JSONException malformed) {
+            throw new IOException("Malformed weather response", malformed);
+        }
+    }
+
+    private static String requestText(Network network, String address) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) network.openConnection(new URL(address));
         connection.setConnectTimeout(5000);
         connection.setReadTimeout(5000);
         connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("User-Agent", "TVLauncher-Android");
         try {
             int status = connection.getResponseCode();
             if (status < 200 || status >= 300) {
@@ -86,9 +99,7 @@ public final class WeatherClient {
                 String line;
                 while ((line = reader.readLine()) != null) json.append(line);
             }
-            return new JSONObject(json.toString());
-        } catch (org.json.JSONException malformed) {
-            throw new IOException("Malformed weather response", malformed);
+            return json.toString();
         } finally {
             connection.disconnect();
         }

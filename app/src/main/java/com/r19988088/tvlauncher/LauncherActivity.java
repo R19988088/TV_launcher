@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,6 +38,8 @@ import com.r19988088.tvlauncher.model.AppEntry;
 import com.r19988088.tvlauncher.model.LauncherSettings;
 import com.r19988088.tvlauncher.model.ReorderSession;
 import com.r19988088.tvlauncher.system.SystemPackageControl;
+import com.r19988088.tvlauncher.update.GitHubRelease;
+import com.r19988088.tvlauncher.update.GitHubUpdateClient;
 import com.r19988088.tvlauncher.ui.AppCardView;
 import com.r19988088.tvlauncher.ui.AppGridAdapter;
 import com.r19988088.tvlauncher.ui.GridFocusNavigator;
@@ -105,6 +108,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private TextView topRowsValue;
     private TextView clockView;
     private TextView weatherView;
+    private TextView updateStatus;
+    private Button updateButton;
     private Switch tvHomeSwitch;
     private Switch voiceControlSwitch;
     private Switch appStoreSwitch;
@@ -130,6 +135,10 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private int wallpaperLoadGeneration;
     private boolean weatherRequestRunning;
     private boolean randomWallpaperLoading;
+    private boolean updateBusy;
+    private boolean updateChecked;
+    private GitHubRelease availableUpdate;
+    private File downloadedUpdate;
     private boolean activityResumed;
     private long nextWeatherRefreshAt;
     private Bitmap customWallpaper;
@@ -214,6 +223,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         topRowsValue = findViewById(R.id.top_rows_value);
         clockView = findViewById(R.id.clock);
         weatherView = findViewById(R.id.weather);
+        updateStatus = findViewById(R.id.update_status);
+        updateButton = findViewById(R.id.update_button);
         tvHomeSwitch = findViewById(R.id.disable_tvhome);
         voiceControlSwitch = findViewById(R.id.disable_voice_control);
         appStoreSwitch = findViewById(R.id.disable_appstore);
@@ -230,6 +241,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         adapter = new AppGridAdapter(this, bannerLoader, this);
         systemPackageControl = new SystemPackageControl(this);
         setupSettingsPanel();
+        updateStatus.setText(getString(R.string.current_version, currentVersion()));
         applyDefaultSystemPackageControls();
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener);
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
@@ -660,6 +672,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         settingsCategoryNavigator.reset();
         showSettingsCategory(SettingsCategoryNavigator.APPS, false);
         loadSettingsApps();
+        if (!updateChecked) checkForUpdate();
     }
 
     private void showSettingsCategory(int category, boolean enter) {
@@ -829,6 +842,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                         tvPushSwitch, "com.xiaomi.mitv.tvpush.tvpushservice", checked));
         analyticsSwitch.setOnCheckedChangeListener((button, checked) ->
                 onSystemSwitchChanged(analyticsSwitch, "com.miui.tv.analytics", checked));
+        updateButton.setOnClickListener(view -> onUpdateClicked());
         settingsAppList.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         settingsAppList.setOnItemClickListener((parent, view, position, id) -> toggleSettingsApp(position));
     }
@@ -920,6 +934,119 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             if (success) preferences.markDefaultSystemControlsApplied();
             mainHandler.post(this::updateSystemSwitches);
         });
+    }
+
+    private void onUpdateClicked() {
+        if (updateBusy) return;
+        if (availableUpdate == null) {
+            checkForUpdate();
+        } else if (downloadedUpdate != null && downloadedUpdate.isFile()) {
+            installUpdate();
+        } else {
+            downloadUpdate();
+        }
+    }
+
+    private void checkForUpdate() {
+        if (updateBusy) return;
+        updateBusy = true;
+        updateChecked = true;
+        updateStatus.setText(R.string.checking_update);
+        repositoryExecutor.execute(() -> {
+            GitHubRelease latest = null;
+            try {
+                latest = new GitHubUpdateClient().latest();
+            } catch (IOException ignored) {}
+            final GitHubRelease release = latest;
+            mainHandler.post(() -> {
+                updateBusy = false;
+                if (release == null) {
+                    updateStatus.setText(R.string.update_check_failed);
+                    updateButton.setText(R.string.check_update);
+                    return;
+                }
+                if (!GitHubRelease.isNewer(release.version(), currentVersion())) {
+                    availableUpdate = null;
+                    updateStatus.setText(R.string.latest_version);
+                    updateButton.setText(R.string.check_update);
+                    return;
+                }
+                availableUpdate = release;
+                downloadedUpdate = new File(getCacheDir(), "updates/update.apk");
+                updateStatus.setText(getString(R.string.update_available, release.version()));
+                updateButton.setText(getString(
+                        downloadedUpdate.isFile() ? R.string.install_update : R.string.download_update,
+                        release.version()));
+            });
+        });
+    }
+
+    private void downloadUpdate() {
+        final GitHubRelease release = availableUpdate;
+        if (release == null) return;
+        updateBusy = true;
+        updateButton.setText(getString(R.string.downloading_update, release.version()));
+        repositoryExecutor.execute(() -> {
+            File apk = null;
+            try {
+                apk = new GitHubUpdateClient().download(
+                        release, new File(getCacheDir(), "updates"));
+            } catch (IOException ignored) {}
+            final File downloaded = apk;
+            mainHandler.post(() -> {
+                updateBusy = false;
+                if (downloaded == null) {
+                    updateStatus.setText(R.string.update_download_failed);
+                    updateButton.setText(getString(R.string.download_update, release.version()));
+                    return;
+                }
+                if (!isValidUpdateApk(downloaded)) {
+                    downloaded.delete();
+                    updateStatus.setText(R.string.update_download_failed);
+                    updateButton.setText(getString(R.string.download_update, release.version()));
+                    return;
+                }
+                downloadedUpdate = downloaded;
+                updateButton.setText(getString(R.string.install_update, release.version()));
+            });
+        });
+    }
+
+    private boolean isValidUpdateApk(File apk) {
+        android.content.pm.PackageInfo archive =
+                getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+        return archive != null && getPackageName().equals(archive.packageName);
+    }
+
+    private void installUpdate() {
+        if (downloadedUpdate == null || !downloadedUpdate.isFile()) return;
+        if (Build.VERSION.SDK_INT >= 26
+                && !getPackageManager().canRequestPackageInstalls()) {
+            try {
+                startActivity(new Intent(
+                        android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (ActivityNotFoundException ignored) {}
+            Toast.makeText(this, R.string.allow_install_updates, Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent install = new Intent(Intent.ACTION_VIEW,
+                Uri.parse("content://com.r19988088.tvlauncher.updates/update.apk"));
+        install.setDataAndType(install.getData(), "application/vnd.android.package-archive");
+        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivity(install);
+        } catch (ActivityNotFoundException failure) {
+            Toast.makeText(this, R.string.update_download_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String currentVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException impossible) {
+            return "0";
+        }
     }
 
     private void updateSystemSwitch(Switch target, String packageName) {
