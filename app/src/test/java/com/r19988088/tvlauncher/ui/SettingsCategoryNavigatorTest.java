@@ -20,4 +20,13 @@ public final class SettingsCategoryNavigatorTest {
         assertTrue(navigator.backShouldClose());
         assertEquals(SettingsCategoryNavigator.DESKTOP, navigator.selected());
     }
+
+    @Test
+    public void wallpaperIsAnIndependentCategory() {
+        SettingsCategoryNavigator navigator = new SettingsCategoryNavigator();
+
+        navigator.select(SettingsCategoryNavigator.WALLPAPER);
+
+        assertEquals(SettingsCategoryNavigator.WALLPAPER, navigator.selected());
+    }
 }
