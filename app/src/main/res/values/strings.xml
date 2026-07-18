@@ -7,6 +7,7 @@
     <string name="move_saved">位置已保存</string>
     <string name="move_cancelled">已取消移动</string>
     <string name="settings_title">桌面设置</string>
+    <string name="app_management_title">应用管理</string>
     <string name="columns_title">每行数量</string>
     <string name="card_size_title">卡片尺寸</string>
     <string name="spacing_title">卡片间距</string>
@@ -31,7 +32,6 @@
     <string name="apps_title">添加到桌面</string>
     <string name="wallpaper_saved">壁纸已保存</string>
     <string name="wallpaper_failed">无法读取壁纸</string>
-    <string name="percent_value">%1$d%%</string>
     <string-array name="app_actions">
         <item>移动</item>
         <item>屏蔽显示</item>

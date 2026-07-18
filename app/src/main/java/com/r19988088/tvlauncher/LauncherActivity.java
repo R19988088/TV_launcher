@@ -18,7 +18,9 @@ import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -39,6 +41,8 @@ import com.r19988088.tvlauncher.ui.AppGridAdapter;
 import com.r19988088.tvlauncher.ui.GridFocusNavigator;
 import com.r19988088.tvlauncher.ui.GridMetrics;
 import com.r19988088.tvlauncher.ui.LauncherGridLayout;
+import com.r19988088.tvlauncher.ui.ScaleValueFormatter;
+import com.r19988088.tvlauncher.ui.SettingsCategoryNavigator;
 import com.r19988088.tvlauncher.weather.WeatherClient;
 import java.io.IOException;
 import java.io.InputStream;
@@ -77,6 +81,10 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private TextView emptyPrompt;
     private ImageView wallpaperView;
     private View settingsPanel;
+    private ViewGroup appManagementPage;
+    private ViewGroup desktopSettingsPage;
+    private Button appManagementTab;
+    private Button desktopSettingsTab;
     private ListView settingsAppList;
     private ProgressBar settingsAppLoading;
     private TextView columnsValue;
@@ -109,6 +117,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private Bitmap customWallpaper;
     private boolean packageReceiverRegistered;
     private boolean updatingSystemSwitches;
+    private final SettingsCategoryNavigator settingsCategoryNavigator =
+            new SettingsCategoryNavigator();
     private Switch pendingSystemSwitch;
     private String pendingSystemPackage;
     private boolean pendingSystemDisabled;
@@ -168,6 +178,10 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         gridView = findViewById(R.id.app_grid);
         emptyPrompt = findViewById(R.id.empty_prompt);
         settingsPanel = findViewById(R.id.settings_panel);
+        appManagementPage = findViewById(R.id.app_management_page);
+        desktopSettingsPage = findViewById(R.id.desktop_settings_page);
+        appManagementTab = findViewById(R.id.app_management_tab);
+        desktopSettingsTab = findViewById(R.id.desktop_settings_tab);
         settingsAppList = findViewById(R.id.settings_app_list);
         settingsAppLoading = findViewById(R.id.settings_app_loading);
         columnsValue = findViewById(R.id.columns_value);
@@ -291,7 +305,11 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     @Override
     public void onBackPressed() {
         if (isSettingsOpen()) {
-            closeSettings();
+            if (settingsCategoryNavigator.backShouldClose()) {
+                closeSettings();
+            } else {
+                showSettingsCategory(settingsCategoryNavigator.selected(), false);
+            }
         } else if (reorderSession != null) {
             cancelMove();
         }
@@ -599,8 +617,32 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 .translationX(0f)
                 .setDuration(180L)
                 .start();
-        findViewById(R.id.columns_minus).requestFocus();
+        settingsCategoryNavigator.reset();
+        showSettingsCategory(SettingsCategoryNavigator.APPS, false);
         loadSettingsApps();
+    }
+
+    private void showSettingsCategory(int category, boolean enter) {
+        settingsCategoryNavigator.select(category);
+        if (enter) settingsCategoryNavigator.enter();
+        boolean appsSelected = category == SettingsCategoryNavigator.APPS;
+        appManagementTab.setSelected(appsSelected);
+        desktopSettingsTab.setSelected(!appsSelected);
+        appManagementPage.setVisibility(appsSelected ? View.VISIBLE : View.GONE);
+        desktopSettingsPage.setVisibility(appsSelected ? View.GONE : View.VISIBLE);
+        appManagementPage.setDescendantFocusability(enter && appsSelected
+                ? ViewGroup.FOCUS_AFTER_DESCENDANTS
+                : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        desktopSettingsPage.setDescendantFocusability(enter && !appsSelected
+                ? ViewGroup.FOCUS_AFTER_DESCENDANTS
+                : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        appManagementTab.setFocusable(!enter);
+        desktopSettingsTab.setFocusable(!enter);
+        if (enter) {
+            (appsSelected ? settingsAppList : findViewById(R.id.columns_minus)).requestFocus();
+        } else {
+            (appsSelected ? appManagementTab : desktopSettingsTab).requestFocus();
+        }
     }
 
     private void closeSettings() {
@@ -688,10 +730,24 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private void setupSettingsPanel() {
+        appManagementTab.setOnFocusChangeListener((view, focused) -> {
+            if (focused && !settingsCategoryNavigator.isEntered()) {
+                showSettingsCategory(SettingsCategoryNavigator.APPS, false);
+            }
+        });
+        desktopSettingsTab.setOnFocusChangeListener((view, focused) -> {
+            if (focused && !settingsCategoryNavigator.isEntered()) {
+                showSettingsCategory(SettingsCategoryNavigator.DESKTOP, false);
+            }
+        });
+        appManagementTab.setOnClickListener(view ->
+                showSettingsCategory(SettingsCategoryNavigator.APPS, true));
+        desktopSettingsTab.setOnClickListener(view ->
+                showSettingsCategory(SettingsCategoryNavigator.DESKTOP, true));
         findViewById(R.id.columns_minus).setOnClickListener(view -> changeColumns(-1));
         findViewById(R.id.columns_plus).setOnClickListener(view -> changeColumns(1));
-        findViewById(R.id.card_minus).setOnClickListener(view -> changeCardScale(-5));
-        findViewById(R.id.card_plus).setOnClickListener(view -> changeCardScale(5));
+        findViewById(R.id.card_minus).setOnClickListener(view -> changeCardScale(-10));
+        findViewById(R.id.card_plus).setOnClickListener(view -> changeCardScale(10));
         findViewById(R.id.spacing_minus).setOnClickListener(view -> changeSpacing(-10));
         findViewById(R.id.spacing_plus).setOnClickListener(view -> changeSpacing(10));
         findViewById(R.id.top_rows_minus).setOnClickListener(view -> changeTopRows(-1));
@@ -843,8 +899,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private void updateSettingsValues() {
         LauncherSettings settings = state.settings();
         columnsValue.setText(String.valueOf(settings.columns()));
-        cardValue.setText(getString(R.string.percent_value, settings.cardScalePercent()));
-        spacingValue.setText(getString(R.string.percent_value, settings.spacingScalePercent()));
+        cardValue.setText(ScaleValueFormatter.format(settings.cardScalePercent()));
+        spacingValue.setText(ScaleValueFormatter.format(settings.spacingScalePercent()));
         topRowsValue.setText(getString(R.string.rows_value, settings.topBlankRows()));
     }
 

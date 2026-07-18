@@ -18,7 +18,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 public final class AppCardView extends FrameLayout {
-    private static final long ANIMATION_DURATION_MS = 180L;
+    private static final long ANIMATION_DURATION_MS = 220L;
     private static final PathInterpolator FOCUS_INTERPOLATOR =
             new PathInterpolator(0.20f, 0f, 0f, 1f);
     private static final OvershootInterpolator ACTIVE_INTERPOLATOR =
@@ -89,7 +89,7 @@ public final class AppCardView extends FrameLayout {
         FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
                 cardWidth + dp(24), labelHeight);
         labelParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        labelParams.topMargin = topMargin + cardHeight + labelGap + dp(3);
+        labelParams.topMargin = topMargin + cardHeight + labelGap + dp(8);
         labelView.setLayoutParams(labelParams);
         imageView.post(new Runnable() {
             @Override

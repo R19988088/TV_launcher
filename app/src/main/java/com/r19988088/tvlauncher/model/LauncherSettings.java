@@ -31,10 +31,10 @@ public final class LauncherSettings {
             int topBlankRows,
             int spacingScalePercent) {
         this.columns = clamp(columns, 4, 8);
-        this.cardScalePercent = clamp(cardScalePercent, 80, 120);
+        this.cardScalePercent = clamp(cardScalePercent, 50, 200);
         this.iconScalePercent = clamp(iconScalePercent, 40, 80);
         this.topBlankRows = clamp(topBlankRows, 0, 5);
-        this.spacingScalePercent = clamp(spacingScalePercent, 50, 150);
+        this.spacingScalePercent = clamp(spacingScalePercent, 50, 200);
     }
 
     public static LauncherSettings defaults() {
