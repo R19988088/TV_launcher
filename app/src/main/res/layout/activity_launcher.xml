@@ -78,6 +78,8 @@
         android:layout_height="match_parent"
         android:layout_gravity="end"
         android:background="#EE20252A"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:elevation="24dp"
         android:orientation="vertical"
         android:padding="24dp"
@@ -94,33 +96,34 @@
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/columns_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
-            <Button android:id="@+id/columns_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/columns_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
             <TextView android:id="@+id/columns_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
-            <Button android:id="@+id/columns_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/columns_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/card_size_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
-            <Button android:id="@+id/card_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/card_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
             <TextView android:id="@+id/card_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
-            <Button android:id="@+id/card_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/card_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/spacing_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
-            <Button android:id="@+id/spacing_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/spacing_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
             <TextView android:id="@+id/spacing_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
-            <Button android:id="@+id/spacing_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/spacing_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:orientation="horizontal">
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/top_blank_rows_title" android:textColor="#E6FFFFFF" android:textSize="17sp" />
-            <Button android:id="@+id/top_rows_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/top_rows_minus" android:layout_width="52dp" android:layout_height="46dp" android:text="−" android:textSize="20sp" />
             <TextView android:id="@+id/top_rows_value" android:layout_width="68dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="19sp" />
-            <Button android:id="@+id/top_rows_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
+            <Button style="@style/SettingsControlButton" android:id="@+id/top_rows_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
         </LinearLayout>
 
         <Button
+            style="@style/SettingsWideButton"
             android:id="@+id/wallpaper_button"
             android:layout_width="match_parent"
             android:layout_height="48dp"
@@ -140,6 +143,9 @@
             android:id="@+id/disable_tvhome"
             android:layout_width="match_parent"
             android:layout_height="44dp"
+            android:background="@drawable/settings_row_focus"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="@string/disable_tvhome"
             android:textColor="#F2FFFFFF"
             android:textSize="16sp" />
@@ -148,6 +154,9 @@
             android:id="@+id/disable_voice_control"
             android:layout_width="match_parent"
             android:layout_height="44dp"
+            android:background="@drawable/settings_row_focus"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="@string/disable_voice_control"
             android:textColor="#F2FFFFFF"
             android:textSize="16sp" />
@@ -156,6 +165,9 @@
             android:id="@+id/disable_appstore"
             android:layout_width="match_parent"
             android:layout_height="44dp"
+            android:background="@drawable/settings_row_focus"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="@string/disable_appstore"
             android:textColor="#F2FFFFFF"
             android:textSize="16sp" />

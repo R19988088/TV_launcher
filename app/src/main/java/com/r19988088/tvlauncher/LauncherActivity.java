@@ -321,12 +321,49 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 .setItems(R.array.app_actions, (dialog, which) -> {
                     if (which == 0) {
                         beginMove(entry);
-                    } else {
+                    } else if (which == 1) {
                         hide(entry);
+                    } else {
+                        confirmUninstall(entry);
                     }
                 })
                 .show();
         return true;
+    }
+
+    private void confirmUninstall(AppEntry entry) {
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.uninstall_title, entry.label()))
+                .setMessage(R.string.uninstall_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.uninstall_confirm, (dialog, which) ->
+                        uninstallSilently(entry))
+                .show();
+    }
+
+    private void uninstallSilently(AppEntry entry) {
+        final String packageName = entry.componentName().getPackageName();
+        repositoryExecutor.execute(() -> {
+            boolean removed = systemPackageControl.uninstallViaLocalAdb(packageName);
+            if (!removed
+                    && Shizuku.pingBinder()
+                    && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                try {
+                    removed = systemPackageControl.uninstallViaShizuku(packageName);
+                } catch (IOException | InterruptedException | RuntimeException failure) {
+                    if (failure instanceof InterruptedException) Thread.currentThread().interrupt();
+                    removed = false;
+                }
+            }
+            final boolean success = removed;
+            mainHandler.post(() -> {
+                refreshDesktop();
+                Toast.makeText(
+                        this,
+                        success ? R.string.uninstall_success : R.string.uninstall_failed,
+                        Toast.LENGTH_SHORT).show();
+            });
+        });
     }
 
     @Override

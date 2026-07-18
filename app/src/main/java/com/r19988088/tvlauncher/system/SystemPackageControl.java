@@ -30,9 +30,29 @@ public final class SystemPackageControl {
         }
     }
 
+    public boolean uninstallViaLocalAdb(String packageName) {
+        try {
+            localAdbShell.execute(localAdbUninstallCommandFor(packageName));
+            return !isInstalled(packageName);
+        } catch (Exception failure) {
+            return false;
+        }
+    }
+
     public boolean setDisabledViaShizuku(String packageName, boolean disabled)
             throws IOException, InterruptedException {
-        Process process = Shizuku.newProcess(commandFor(packageName, disabled), null, null);
+        return executeViaShizuku(commandFor(packageName, disabled));
+    }
+
+    public boolean uninstallViaShizuku(String packageName)
+            throws IOException, InterruptedException {
+        return executeViaShizuku(
+                new String[] {"pm", "uninstall", "--user", "0", packageName})
+                && !isInstalled(packageName);
+    }
+
+    private boolean executeViaShizuku(String[] command) throws IOException, InterruptedException {
+        Process process = Shizuku.newProcess(command, null, null);
         try {
             return process.waitFor() == 0;
         } finally {
@@ -48,5 +68,18 @@ public final class SystemPackageControl {
 
     static String localAdbCommandFor(String packageName, boolean disabled) {
         return String.join(" ", commandFor(packageName, disabled));
+    }
+
+    static String localAdbUninstallCommandFor(String packageName) {
+        return "pm uninstall --user 0 " + packageName;
+    }
+
+    private boolean isInstalled(String packageName) {
+        try {
+            packageManager.getApplicationInfo(packageName, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException removed) {
+            return false;
+        }
     }
 }

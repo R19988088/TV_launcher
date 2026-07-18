@@ -25,4 +25,11 @@ public final class SystemPackageControlTest {
                 "pm enable --user 0 com.mitv.tvhome",
                 SystemPackageControl.localAdbCommandFor("com.mitv.tvhome", false));
     }
+
+    @Test
+    public void buildsSilentPerUserUninstallCommand() {
+        assertEquals(
+                "pm uninstall --user 0 com.example.tv",
+                SystemPackageControl.localAdbUninstallCommandFor("com.example.tv"));
+    }
 }

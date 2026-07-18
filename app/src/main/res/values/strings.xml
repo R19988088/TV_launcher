@@ -22,6 +22,12 @@
     <string name="adb_required_title">需要开启本机 ADB</string>
     <string name="adb_required_message">请在电脑执行一次：\nadb tcpip 5555\n\n然后再次切换开关；电视弹出调试授权时请选择始终允许。</string>
     <string name="system_control_failed">系统设置修改失败</string>
+    <string name="uninstall_title">卸载“%1$s”？</string>
+    <string name="uninstall_message">确认后将直接卸载，不再显示系统卸载页面。</string>
+    <string name="uninstall_confirm">确认卸载</string>
+    <string name="cancel">取消</string>
+    <string name="uninstall_success">卸载完成</string>
+    <string name="uninstall_failed">卸载失败，请确认 ADB 授权</string>
     <string name="apps_title">添加到桌面</string>
     <string name="wallpaper_saved">壁纸已保存</string>
     <string name="wallpaper_failed">无法读取壁纸</string>
@@ -29,5 +35,6 @@
     <string-array name="app_actions">
         <item>移动</item>
         <item>屏蔽显示</item>
+        <item>卸载</item>
     </string-array>
 </resources>

@@ -8,4 +8,16 @@
         <item name="android:windowDisablePreview">true</item>
         <item name="android:colorAccent">#FFFFFF</item>
     </style>
+
+    <style name="SettingsControlButton" parent="android:style/Widget.Material.Button">
+        <item name="android:background">@drawable/settings_button_background</item>
+        <item name="android:stateListAnimator">@animator/settings_button_focus</item>
+        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+    </style>
+
+    <style name="SettingsWideButton" parent="SettingsControlButton">
+        <item name="android:stateListAnimator">@animator/settings_wide_button_focus</item>
+    </style>
 </resources>
