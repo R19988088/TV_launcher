@@ -2,6 +2,7 @@ package com.r19988088.tvlauncher.system;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
+import java.io.File;
 import java.io.IOException;
 import rikka.shizuku.Shizuku;
 
