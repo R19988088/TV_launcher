@@ -15,7 +15,7 @@ public final class BannerCacheKeyTest {
         assertNotEquals(base, new BannerCacheKey("pkg/.Main", 10L, 264, 148, 70));
         assertEquals(64, base.fileName().length());
         assertEquals(
-                "e960ff86f3e8369eeab6acbf307c3e45b3c5571068105a3c04acdcd5bb2444e9",
+                "318ad8c7aad1278aa07309e9c534966de0e25911243d6c8fa80e0993bf864ed1",
                 base.fileName());
     }
 }

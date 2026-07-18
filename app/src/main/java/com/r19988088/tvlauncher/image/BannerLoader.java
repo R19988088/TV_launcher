@@ -7,8 +7,10 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Path;
+import android.graphics.BitmapShader;
+import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -144,15 +146,8 @@ public final class BannerLoader {
         if (drawable == null) {
             return null;
         }
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        Path roundedCard = new Path();
-        roundedCard.addRoundRect(
-                new RectF(0f, 0f, width, height),
-                height * 0.12f,
-                height * 0.12f,
-                Path.Direction.CW);
-        canvas.clipPath(roundedCard);
+        Bitmap source = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(source);
         if (banner == null) {
             float hue = Math.abs(entry.componentId().hashCode() % 360);
             canvas.drawColor(Color.HSVToColor(new float[] {hue, 0.42f, 0.36f}));
@@ -164,7 +159,17 @@ public final class BannerLoader {
             drawable.setBounds(0, 0, width, height);
         }
         drawable.draw(canvas);
-        return bitmap;
+        Bitmap rounded = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        paint.setShader(new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
+        float radius = height * 0.12f;
+        new Canvas(rounded).drawRoundRect(
+                new RectF(0.5f, 0.5f, width - 0.5f, height - 0.5f),
+                radius,
+                radius,
+                paint);
+        source.recycle();
+        return rounded;
     }
 
     private Drawable loadBanner(ComponentName componentName) {

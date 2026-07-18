@@ -4,7 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Outline;
-import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
@@ -25,6 +25,7 @@ public final class AppCardView extends FrameLayout {
             new OvershootInterpolator(0.85f);
 
     private final ImageView imageView;
+    private final GradientDrawable placeholder;
     private final TextView labelView;
     private final float density;
     private String boundComponentId = "";
@@ -47,7 +48,10 @@ public final class AppCardView extends FrameLayout {
 
         imageView = new ImageView(context);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        imageView.setClipToOutline(true);
+        imageView.setFilterBitmap(true);
+        placeholder = new GradientDrawable();
+        placeholder.setColor(0x992b3540);
+        imageView.setBackground(placeholder);
         imageView.setOutlineProvider(new ViewOutlineProvider() {
             @Override
             public void getOutline(View view, Outline outline) {
@@ -85,6 +89,7 @@ public final class AppCardView extends FrameLayout {
         imageParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         imageParams.topMargin = topMargin;
         imageView.setLayoutParams(imageParams);
+        placeholder.setCornerRadius(cardHeight * 0.12f);
 
         FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
                 cardWidth + dp(24), labelHeight);
@@ -104,7 +109,7 @@ public final class AppCardView extends FrameLayout {
         boundRequestKey = requestKey;
         labelView.setText(label);
         setContentDescription(label);
-        imageView.setImageDrawable(new ColorDrawable(0x992b3540));
+        imageView.setImageDrawable(null);
         applyVisualState(CardVisualState.unfocused(), false);
     }
 

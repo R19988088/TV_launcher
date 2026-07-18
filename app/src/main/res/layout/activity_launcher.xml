@@ -110,6 +110,15 @@
                 android:layout_weight="1"
                 android:nextFocusDown="@id/desktop_settings_tab"
                 android:text="@string/settings_title" />
+
+            <Button
+                android:id="@+id/wallpaper_settings_tab"
+                style="@style/SettingsCategoryTab"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:nextFocusDown="@id/wallpaper_settings_tab"
+                android:text="@string/wallpaper_title" />
         </LinearLayout>
 
         <FrameLayout
@@ -200,23 +209,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
-                        android:layout_marginBottom="6dp"
-                        android:text="@string/wallpaper_title"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <Button
-                        android:id="@+id/wallpaper_button"
-                        style="@style/SettingsWideButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="@string/random_wallpaper" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
                         android:layout_marginBottom="4dp"
                         android:text="@string/system_control_title"
                         android:textColor="#CCFFFFFF"
@@ -256,6 +248,85 @@
                         android:textSize="16sp" />
                 </LinearLayout>
             </ScrollView>
+
+            <LinearLayout
+                android:id="@+id/wallpaper_settings_page"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/online_wallpaper_title"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:clipChildren="false"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/wallpaper_button"
+                        style="@style/SettingsWideButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="@string/random_wallpaper" />
+
+                    <Button
+                        android:id="@+id/save_wallpaper_button"
+                        style="@style/SettingsControlButton"
+                        android:layout_width="72dp"
+                        android:layout_height="46dp"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/save_wallpaper" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/local_wallpaper_title"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1">
+
+                    <GridView
+                        android:id="@+id/local_wallpaper_grid"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:columnWidth="76dp"
+                        android:drawSelectorOnTop="true"
+                        android:horizontalSpacing="8dp"
+                        android:listSelector="@drawable/local_wallpaper_selector"
+                        android:numColumns="4"
+                        android:scrollbars="none"
+                        android:stretchMode="columnWidth"
+                        android:verticalSpacing="8dp" />
+
+                    <TextView
+                        android:id="@+id/local_wallpaper_empty"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="@string/local_wallpaper_empty"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="15sp" />
+                </FrameLayout>
+            </LinearLayout>
         </FrameLayout>
     </LinearLayout>
 </FrameLayout>

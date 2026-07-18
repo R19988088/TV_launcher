@@ -26,7 +26,7 @@ public final class BannerCacheKey {
     }
 
     public String fileName() {
-        String value = "2:" + componentId + ':' + lastUpdateTime + ':' + width + ':' + height + ':'
+        String value = "3:" + componentId + ':' + lastUpdateTime + ':' + width + ':' + height + ':'
                 + iconScalePercent;
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")

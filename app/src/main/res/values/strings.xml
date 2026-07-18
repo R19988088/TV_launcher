@@ -14,6 +14,13 @@
     <string name="top_blank_rows_title">顶部空位</string>
     <string name="rows_value">%1$d 行</string>
     <string name="wallpaper_title">壁纸</string>
+    <string name="online_wallpaper_title">在线壁纸</string>
+    <string name="local_wallpaper_title">本地壁纸</string>
+    <string name="local_wallpaper_empty">还没有保存的壁纸</string>
+    <string name="save_wallpaper">保存</string>
+    <string name="wallpaper_saved_local">已保存到本地壁纸</string>
+    <string name="wallpaper_save_failed">没有可保存的在线壁纸</string>
+    <string name="local_wallpaper_applied">已应用本地壁纸</string>
     <string name="random_wallpaper">随机壁纸</string>
     <string name="random_wallpaper_loading">正在刷新壁纸…</string>
     <string name="random_wallpaper_saved">壁纸已刷新</string>

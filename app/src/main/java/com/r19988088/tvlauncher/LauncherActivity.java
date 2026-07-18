@@ -21,6 +21,7 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -41,11 +42,14 @@ import com.r19988088.tvlauncher.ui.AppGridAdapter;
 import com.r19988088.tvlauncher.ui.GridFocusNavigator;
 import com.r19988088.tvlauncher.ui.GridMetrics;
 import com.r19988088.tvlauncher.ui.LauncherGridLayout;
+import com.r19988088.tvlauncher.ui.LocalWallpaperAdapter;
 import com.r19988088.tvlauncher.ui.ScaleValueFormatter;
 import com.r19988088.tvlauncher.ui.SettingsCategoryNavigator;
 import com.r19988088.tvlauncher.weather.WeatherClient;
 import com.r19988088.tvlauncher.wallpaper.RandomWallpaperClient;
 import com.r19988088.tvlauncher.wallpaper.WallpaperDecodeSize;
+import com.r19988088.tvlauncher.wallpaper.WallpaperLibrary;
+import com.r19988088.tvlauncher.wallpaper.WallpaperThumbnailLoader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -85,9 +89,14 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private View settingsPanel;
     private ViewGroup appManagementPage;
     private ViewGroup desktopSettingsPage;
+    private ViewGroup wallpaperSettingsPage;
     private Button appManagementTab;
     private Button desktopSettingsTab;
+    private Button wallpaperSettingsTab;
     private Button wallpaperButton;
+    private Button saveWallpaperButton;
+    private GridView localWallpaperGrid;
+    private TextView localWallpaperEmpty;
     private ListView settingsAppList;
     private ProgressBar settingsAppLoading;
     private TextView columnsValue;
@@ -102,6 +111,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private LauncherPreferences preferences;
     private AppRepository appRepository;
     private BannerLoader bannerLoader;
+    private WallpaperLibrary wallpaperLibrary;
+    private WallpaperThumbnailLoader wallpaperThumbnailLoader;
+    private LocalWallpaperAdapter localWallpaperAdapter;
     private AppGridAdapter adapter;
     private SystemPackageControl systemPackageControl;
     private LauncherState state = LauncherState.defaults();
@@ -115,6 +127,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private int loadGeneration;
     private int wallpaperLoadGeneration;
     private boolean weatherRequestRunning;
+    private boolean randomWallpaperLoading;
     private boolean activityResumed;
     private long nextWeatherRefreshAt;
     private Bitmap customWallpaper;
@@ -183,9 +196,14 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         settingsPanel = findViewById(R.id.settings_panel);
         appManagementPage = findViewById(R.id.app_management_page);
         desktopSettingsPage = findViewById(R.id.desktop_settings_page);
+        wallpaperSettingsPage = findViewById(R.id.wallpaper_settings_page);
         appManagementTab = findViewById(R.id.app_management_tab);
         desktopSettingsTab = findViewById(R.id.desktop_settings_tab);
+        wallpaperSettingsTab = findViewById(R.id.wallpaper_settings_tab);
         wallpaperButton = findViewById(R.id.wallpaper_button);
+        saveWallpaperButton = findViewById(R.id.save_wallpaper_button);
+        localWallpaperGrid = findViewById(R.id.local_wallpaper_grid);
+        localWallpaperEmpty = findViewById(R.id.local_wallpaper_empty);
         settingsAppList = findViewById(R.id.settings_app_list);
         settingsAppLoading = findViewById(R.id.settings_app_loading);
         columnsValue = findViewById(R.id.columns_value);
@@ -200,6 +218,11 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         preferences = new LauncherPreferences(this);
         appRepository = new AppRepository(this);
         bannerLoader = new BannerLoader(this);
+        wallpaperLibrary = new WallpaperLibrary(new File(getFilesDir(), "wallpapers"));
+        wallpaperThumbnailLoader = new WallpaperThumbnailLoader();
+        localWallpaperAdapter = new LocalWallpaperAdapter(this, wallpaperThumbnailLoader);
+        localWallpaperGrid.setAdapter(localWallpaperAdapter);
+        localWallpaperGrid.setEmptyView(localWallpaperEmpty);
         adapter = new AppGridAdapter(this, bannerLoader, this);
         systemPackageControl = new SystemPackageControl(this);
         setupSettingsPanel();
@@ -412,6 +435,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         Shizuku.removeBinderReceivedListener(shizukuBinderListener);
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
         bannerLoader.close();
+        wallpaperThumbnailLoader.close();
         if (customWallpaper != null) {
             customWallpaper.recycle();
         }
@@ -637,22 +661,37 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         settingsCategoryNavigator.select(category);
         if (enter) settingsCategoryNavigator.enter();
         boolean appsSelected = category == SettingsCategoryNavigator.APPS;
+        boolean desktopSelected = category == SettingsCategoryNavigator.DESKTOP;
+        boolean wallpaperSelected = category == SettingsCategoryNavigator.WALLPAPER;
         appManagementTab.setSelected(appsSelected);
-        desktopSettingsTab.setSelected(!appsSelected);
+        desktopSettingsTab.setSelected(desktopSelected);
+        wallpaperSettingsTab.setSelected(wallpaperSelected);
         appManagementPage.setVisibility(appsSelected ? View.VISIBLE : View.GONE);
-        desktopSettingsPage.setVisibility(appsSelected ? View.GONE : View.VISIBLE);
+        desktopSettingsPage.setVisibility(desktopSelected ? View.VISIBLE : View.GONE);
+        wallpaperSettingsPage.setVisibility(wallpaperSelected ? View.VISIBLE : View.GONE);
         appManagementPage.setDescendantFocusability(enter && appsSelected
                 ? ViewGroup.FOCUS_AFTER_DESCENDANTS
                 : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        desktopSettingsPage.setDescendantFocusability(enter && !appsSelected
+        desktopSettingsPage.setDescendantFocusability(enter && desktopSelected
+                ? ViewGroup.FOCUS_AFTER_DESCENDANTS
+                : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        wallpaperSettingsPage.setDescendantFocusability(enter && wallpaperSelected
                 ? ViewGroup.FOCUS_AFTER_DESCENDANTS
                 : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         appManagementTab.setFocusable(!enter);
         desktopSettingsTab.setFocusable(!enter);
+        wallpaperSettingsTab.setFocusable(!enter);
+        if (wallpaperSelected) refreshLocalWallpapers();
         if (enter) {
-            (appsSelected ? settingsAppList : findViewById(R.id.columns_minus)).requestFocus();
+            View target = appsSelected
+                    ? settingsAppList
+                    : desktopSelected ? findViewById(R.id.columns_minus) : wallpaperButton;
+            target.requestFocus();
         } else {
-            (appsSelected ? appManagementTab : desktopSettingsTab).requestFocus();
+            View target = appsSelected
+                    ? appManagementTab
+                    : desktopSelected ? desktopSettingsTab : wallpaperSettingsTab;
+            target.requestFocus();
         }
     }
 
@@ -751,10 +790,17 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 showSettingsCategory(SettingsCategoryNavigator.DESKTOP, false);
             }
         });
+        wallpaperSettingsTab.setOnFocusChangeListener((view, focused) -> {
+            if (focused && !settingsCategoryNavigator.isEntered()) {
+                showSettingsCategory(SettingsCategoryNavigator.WALLPAPER, false);
+            }
+        });
         appManagementTab.setOnClickListener(view ->
                 showSettingsCategory(SettingsCategoryNavigator.APPS, true));
         desktopSettingsTab.setOnClickListener(view ->
                 showSettingsCategory(SettingsCategoryNavigator.DESKTOP, true));
+        wallpaperSettingsTab.setOnClickListener(view ->
+                showSettingsCategory(SettingsCategoryNavigator.WALLPAPER, true));
         findViewById(R.id.columns_minus).setOnClickListener(view -> changeColumns(-1));
         findViewById(R.id.columns_plus).setOnClickListener(view -> changeColumns(1));
         findViewById(R.id.card_minus).setOnClickListener(view -> changeCardScale(-10));
@@ -764,6 +810,9 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         findViewById(R.id.top_rows_minus).setOnClickListener(view -> changeTopRows(-1));
         findViewById(R.id.top_rows_plus).setOnClickListener(view -> changeTopRows(1));
         wallpaperButton.setOnClickListener(view -> refreshRandomWallpaper());
+        saveWallpaperButton.setOnClickListener(view -> saveDownloadedWallpaper());
+        localWallpaperGrid.setOnItemClickListener((parent, view, position, id) ->
+                applyLocalWallpaper(localWallpaperAdapter.getItem(position)));
         tvHomeSwitch.setOnCheckedChangeListener((button, checked) ->
                 onSystemSwitchChanged(tvHomeSwitch, "com.mitv.tvhome", checked));
         voiceControlSwitch.setOnCheckedChangeListener((button, checked) ->
@@ -957,7 +1006,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     }
 
     private void refreshRandomWallpaper() {
-        wallpaperButton.setEnabled(false);
+        if (randomWallpaperLoading) return;
+        randomWallpaperLoading = true;
         wallpaperButton.setText(R.string.random_wallpaper_loading);
         final int physicalWidth = getWindowManager()
                 .getDefaultDisplay()
@@ -973,7 +1023,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
             }
             final File wallpaper = downloaded;
             mainHandler.post(() -> {
-                wallpaperButton.setEnabled(true);
+                randomWallpaperLoading = false;
                 wallpaperButton.setText(R.string.random_wallpaper);
                 if (wallpaper == null) {
                     Toast.makeText(this, R.string.random_wallpaper_failed, Toast.LENGTH_SHORT).show();
@@ -983,9 +1033,42 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                         state.componentIds(), state.settings(), Uri.fromFile(wallpaper).toString());
                 preferences.save(state);
                 loadWallpaper();
+                refreshLocalWallpapers();
                 Toast.makeText(this, R.string.random_wallpaper_saved, Toast.LENGTH_SHORT).show();
             });
         });
+    }
+
+    private void saveDownloadedWallpaper() {
+        repositoryExecutor.execute(() -> {
+            boolean saved;
+            try {
+                wallpaperLibrary.saveCurrent();
+                saved = true;
+            } catch (IOException failure) {
+                saved = false;
+            }
+            final boolean success = saved;
+            mainHandler.post(() -> {
+                if (success) refreshLocalWallpapers();
+                Toast.makeText(this, success
+                        ? R.string.wallpaper_saved_local
+                        : R.string.wallpaper_save_failed, Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
+    private void refreshLocalWallpapers() {
+        localWallpaperAdapter.replace(wallpaperLibrary.list());
+        saveWallpaperButton.setEnabled(wallpaperLibrary.currentFile().isFile());
+    }
+
+    private void applyLocalWallpaper(File wallpaper) {
+        state = new LauncherState(
+                state.componentIds(), state.settings(), Uri.fromFile(wallpaper).toString());
+        preferences.save(state);
+        loadWallpaper();
+        Toast.makeText(this, R.string.local_wallpaper_applied, Toast.LENGTH_SHORT).show();
     }
 
     private boolean animateSwap(int from, int to, View fromView, View toView) {
