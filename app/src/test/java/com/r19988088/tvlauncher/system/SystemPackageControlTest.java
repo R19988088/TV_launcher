@@ -42,4 +42,14 @@ public final class SystemPackageControlTest {
                 },
                 SystemPackageControl.defaultDisabledPackages());
     }
+
+    @Test
+    public void buildsLocalAdbSelfUpdateCommand() {
+        assertEquals(
+                "rm -f '/sdcard/update.done'; pm install -r '/sdcard/update.apk'"
+                        + " && printf success > '/sdcard/update.done'",
+                SystemPackageControl.localAdbInstallCommandFor(
+                        new java.io.File("/sdcard/update.apk"),
+                        new java.io.File("/sdcard/update.done")));
+    }
 }
