@@ -29,6 +29,8 @@
     <string name="disable_tvhome">关闭小米桌面</string>
     <string name="disable_voice_control">关闭桌面检测和小爱语音</string>
     <string name="disable_appstore">关闭小米商店自动恢复</string>
+    <string name="disable_tv_push">关闭电视推送</string>
+    <string name="disable_analytics">关闭数据统计</string>
     <string name="shizuku_required_title">需要 ADB 授权</string>
     <string name="shizuku_required_message">请安装并启动 Shizuku，然后执行：\nadb shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh\n\n返回桌面后再次切换。</string>
     <string name="adb_required_title">需要开启本机 ADB</string>

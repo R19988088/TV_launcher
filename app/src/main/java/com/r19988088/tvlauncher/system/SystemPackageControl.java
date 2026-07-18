@@ -6,6 +6,10 @@ import java.io.IOException;
 import rikka.shizuku.Shizuku;
 
 public final class SystemPackageControl {
+    private static final String[] DEFAULT_DISABLED_PACKAGES = {
+        "com.xiaomi.mitv.tvpush.tvpushservice",
+        "com.miui.tv.analytics"
+    };
     private final PackageManager packageManager;
     private final LocalAdbShell localAdbShell;
 
@@ -28,6 +32,10 @@ public final class SystemPackageControl {
         } catch (Exception failure) {
             return false;
         }
+    }
+
+    public static String[] defaultDisabledPackages() {
+        return DEFAULT_DISABLED_PACKAGES.clone();
     }
 
     public boolean uninstallViaLocalAdb(String packageName) {

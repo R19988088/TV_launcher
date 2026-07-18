@@ -108,6 +108,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private Switch tvHomeSwitch;
     private Switch voiceControlSwitch;
     private Switch appStoreSwitch;
+    private Switch tvPushSwitch;
+    private Switch analyticsSwitch;
     private LauncherPreferences preferences;
     private AppRepository appRepository;
     private BannerLoader bannerLoader;
@@ -215,6 +217,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         tvHomeSwitch = findViewById(R.id.disable_tvhome);
         voiceControlSwitch = findViewById(R.id.disable_voice_control);
         appStoreSwitch = findViewById(R.id.disable_appstore);
+        tvPushSwitch = findViewById(R.id.disable_tv_push);
+        analyticsSwitch = findViewById(R.id.disable_analytics);
         preferences = new LauncherPreferences(this);
         appRepository = new AppRepository(this);
         bannerLoader = new BannerLoader(this);
@@ -226,6 +230,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         adapter = new AppGridAdapter(this, bannerLoader, this);
         systemPackageControl = new SystemPackageControl(this);
         setupSettingsPanel();
+        applyDefaultSystemPackageControls();
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener);
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
         gridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
@@ -819,6 +824,11 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
                 onSystemSwitchChanged(voiceControlSwitch, "com.xiaomi.voicecontrol", checked));
         appStoreSwitch.setOnCheckedChangeListener((button, checked) ->
                 onSystemSwitchChanged(appStoreSwitch, "com.xiaomi.mitv.appstore", checked));
+        tvPushSwitch.setOnCheckedChangeListener((button, checked) ->
+                onSystemSwitchChanged(
+                        tvPushSwitch, "com.xiaomi.mitv.tvpush.tvpushservice", checked));
+        analyticsSwitch.setOnCheckedChangeListener((button, checked) ->
+                onSystemSwitchChanged(analyticsSwitch, "com.miui.tv.analytics", checked));
         settingsAppList.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         settingsAppList.setOnItemClickListener((parent, view, position, id) -> toggleSettingsApp(position));
     }
@@ -894,7 +904,22 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         updateSystemSwitch(tvHomeSwitch, "com.mitv.tvhome");
         updateSystemSwitch(voiceControlSwitch, "com.xiaomi.voicecontrol");
         updateSystemSwitch(appStoreSwitch, "com.xiaomi.mitv.appstore");
+        updateSystemSwitch(tvPushSwitch, "com.xiaomi.mitv.tvpush.tvpushservice");
+        updateSystemSwitch(analyticsSwitch, "com.miui.tv.analytics");
         updatingSystemSwitches = false;
+    }
+
+    private void applyDefaultSystemPackageControls() {
+        if (preferences.defaultSystemControlsApplied()) return;
+        repositoryExecutor.execute(() -> {
+            boolean applied = true;
+            for (String packageName : SystemPackageControl.defaultDisabledPackages()) {
+                applied &= systemPackageControl.setDisabledViaLocalAdb(packageName, true);
+            }
+            final boolean success = applied;
+            if (success) preferences.markDefaultSystemControlsApplied();
+            mainHandler.post(this::updateSystemSwitches);
+        });
     }
 
     private void updateSystemSwitch(Switch target, String packageName) {

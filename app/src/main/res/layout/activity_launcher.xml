@@ -246,6 +246,28 @@
                         android:text="@string/disable_appstore"
                         android:textColor="#F2FFFFFF"
                         android:textSize="16sp" />
+
+                    <Switch
+                        android:id="@+id/disable_tv_push"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@drawable/settings_row_focus"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:text="@string/disable_tv_push"
+                        android:textColor="#F2FFFFFF"
+                        android:textSize="16sp" />
+
+                    <Switch
+                        android:id="@+id/disable_analytics"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@drawable/settings_row_focus"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:text="@string/disable_analytics"
+                        android:textColor="#F2FFFFFF"
+                        android:textSize="16sp" />
                 </LinearLayout>
             </ScrollView>
 
