@@ -1,5 +1,10 @@
 package com.r19988088.tvlauncher.weather;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -10,9 +15,20 @@ import java.util.Locale;
 import org.json.JSONObject;
 
 public final class WeatherClient {
+    private final ConnectivityManager connectivityManager;
+
+    public WeatherClient(Context context) {
+        connectivityManager = (ConnectivityManager) context.getApplicationContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+    }
+
     public String fetch() throws IOException {
+        Network network = findDirectNetwork();
+        if (network == null) {
+            throw new IOException("No direct network outside VPN");
+        }
         try {
-            JSONObject location = request("https://ipwho.is/");
+            JSONObject location = request(network, "https://ipwho.is/");
             if (!location.optBoolean("success", false)) {
                 throw new IOException("IP location failed");
             }
@@ -23,7 +39,7 @@ public final class WeatherClient {
                     "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
                             + "&current=temperature_2m,weather_code&timezone=auto",
                     latitude, longitude);
-            JSONObject current = request(url).getJSONObject("current");
+            JSONObject current = request(network, url).getJSONObject("current");
             int temperature = (int) Math.round(current.getDouble("temperature_2m"));
             String weather = WeatherDescription.fromCode(current.getInt("weather_code"));
             return city.isEmpty()
@@ -34,8 +50,28 @@ public final class WeatherClient {
         }
     }
 
-    private static JSONObject request(String address) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
+    private Network findDirectNetwork() {
+        if (connectivityManager == null) return null;
+        Network fallback = null;
+        for (Network network : connectivityManager.getAllNetworks()) {
+            NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+            NetworkInfo info = connectivityManager.getNetworkInfo(network);
+            if (capabilities != null
+                    && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                    && info != null
+                    && info.isConnected()) {
+                if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                    return network;
+                }
+                fallback = network;
+            }
+        }
+        return fallback;
+    }
+
+    private static JSONObject request(Network network, String address) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) network.openConnection(new URL(address));
         connection.setConnectTimeout(5000);
         connection.setReadTimeout(5000);
         connection.setRequestProperty("Accept", "application/json");

@@ -89,7 +89,7 @@ public final class AppCardView extends FrameLayout {
         FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
                 cardWidth + dp(24), labelHeight);
         labelParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        labelParams.topMargin = topMargin + cardHeight + labelGap;
+        labelParams.topMargin = topMargin + cardHeight + labelGap + dp(3);
         labelView.setLayoutParams(labelParams);
         imageView.post(new Runnable() {
             @Override
@@ -161,8 +161,9 @@ public final class AppCardView extends FrameLayout {
                 .alpha(state.labelAlpha())
                 .translationY(active ? 0f : -dp(4))
                 .setStartDelay(active ? 45L : 0L)
-                .setDuration(active ? 170L : 110L)
+                .setDuration(170L)
                 .setInterpolator(FOCUS_INTERPOLATOR)
+                .withLayer()
                 .start();
     }
 

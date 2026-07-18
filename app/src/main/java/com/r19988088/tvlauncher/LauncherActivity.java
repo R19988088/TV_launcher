@@ -562,7 +562,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         weatherExecutor.execute(() -> {
             String result = null;
             try {
-                result = new WeatherClient().fetch();
+                result = new WeatherClient(this).fetch();
             } catch (IOException ignored) {
                 // Weather is optional and must never delay launcher startup.
             }
