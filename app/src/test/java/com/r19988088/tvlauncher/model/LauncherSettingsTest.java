@@ -18,12 +18,20 @@ public final class LauncherSettingsTest {
 
     @Test
     public void valuesAreClampedToSupportedRanges() {
-        LauncherSettings settings = new LauncherSettings(2, 140, 10, 9, 180);
+        LauncherSettings settings = new LauncherSettings(2, 240, 10, 9, 230);
 
         assertEquals(4, settings.columns());
-        assertEquals(120, settings.cardScalePercent());
+        assertEquals(200, settings.cardScalePercent());
         assertEquals(40, settings.iconScalePercent());
         assertEquals(5, settings.topBlankRows());
-        assertEquals(150, settings.spacingScalePercent());
+        assertEquals(200, settings.spacingScalePercent());
+    }
+
+    @Test
+    public void visualScalesCanReachHalfSize() {
+        LauncherSettings settings = new LauncherSettings(6, 20, 60, 2, 40);
+
+        assertEquals(50, settings.cardScalePercent());
+        assertEquals(50, settings.spacingScalePercent());
     }
 }
