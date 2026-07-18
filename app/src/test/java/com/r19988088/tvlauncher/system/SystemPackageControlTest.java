@@ -52,4 +52,13 @@ public final class SystemPackageControlTest {
                         new java.io.File("/sdcard/update.apk"),
                         new java.io.File("/sdcard/update.done")));
     }
+
+    @Test
+    public void buildsSetDefaultHomeCommand() {
+        assertEquals(
+                "cmd package set-home-activity --user 0 "
+                        + "com.r19988088.tvlauncher/.LauncherActivity",
+                SystemPackageControl.localAdbSetHomeCommandFor(
+                        "com.r19988088.tvlauncher/.LauncherActivity"));
+    }
 }
