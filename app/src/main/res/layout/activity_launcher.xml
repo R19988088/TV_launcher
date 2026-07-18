@@ -196,13 +196,22 @@
                         <Button style="@style/SettingsControlButton" android:id="@+id/top_rows_plus" android:layout_width="52dp" android:layout_height="46dp" android:text="+" android:textSize="20sp" />
                     </LinearLayout>
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="6dp"
+                        android:text="@string/wallpaper_title"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
                     <Button
                         android:id="@+id/wallpaper_button"
                         style="@style/SettingsWideButton"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        android:layout_marginTop="6dp"
-                        android:text="@string/choose_wallpaper" />
+                        android:text="@string/random_wallpaper" />
 
                     <TextView
                         android:layout_width="wrap_content"

@@ -44,6 +44,8 @@ import com.r19988088.tvlauncher.ui.LauncherGridLayout;
 import com.r19988088.tvlauncher.ui.ScaleValueFormatter;
 import com.r19988088.tvlauncher.ui.SettingsCategoryNavigator;
 import com.r19988088.tvlauncher.weather.WeatherClient;
+import com.r19988088.tvlauncher.wallpaper.RandomWallpaperClient;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -64,7 +66,6 @@ import rikka.shizuku.Shizuku;
 @SuppressLint("GestureBackNavigation")
 public final class LauncherActivity extends Activity implements AppGridAdapter.Listener {
     private static final long REORDER_ANIMATION_DURATION_MS = 160L;
-    private static final int REQUEST_WALLPAPER = 20;
     private static final int REQUEST_SHIZUKU = 21;
     private static final int FIXED_ICON_SCALE_PERCENT = 60;
     private static final long WEATHER_REFRESH_MS = 60L * 60L * 1000L;
@@ -85,6 +86,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private ViewGroup desktopSettingsPage;
     private Button appManagementTab;
     private Button desktopSettingsTab;
+    private Button wallpaperButton;
     private ListView settingsAppList;
     private ProgressBar settingsAppLoading;
     private TextView columnsValue;
@@ -182,6 +184,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         desktopSettingsPage = findViewById(R.id.desktop_settings_page);
         appManagementTab = findViewById(R.id.app_management_tab);
         desktopSettingsTab = findViewById(R.id.desktop_settings_tab);
+        wallpaperButton = findViewById(R.id.wallpaper_button);
         settingsAppList = findViewById(R.id.settings_app_list);
         settingsAppLoading = findViewById(R.id.settings_app_loading);
         columnsValue = findViewById(R.id.columns_value);
@@ -752,7 +755,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         findViewById(R.id.spacing_plus).setOnClickListener(view -> changeSpacing(10));
         findViewById(R.id.top_rows_minus).setOnClickListener(view -> changeTopRows(-1));
         findViewById(R.id.top_rows_plus).setOnClickListener(view -> changeTopRows(1));
-        findViewById(R.id.wallpaper_button).setOnClickListener(view -> chooseWallpaper());
+        wallpaperButton.setOnClickListener(view -> refreshRandomWallpaper());
         tvHomeSwitch.setOnCheckedChangeListener((button, checked) ->
                 onSystemSwitchChanged(tvHomeSwitch, "com.mitv.tvhome", checked));
         voiceControlSwitch.setOnCheckedChangeListener((button, checked) ->
@@ -945,39 +948,36 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         refreshDesktop();
     }
 
-    private void chooseWallpaper() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
-                .addCategory(Intent.CATEGORY_OPENABLE)
-                .setType("image/*")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        try {
-            startActivityForResult(intent, REQUEST_WALLPAPER);
-        } catch (ActivityNotFoundException failure) {
-            Toast.makeText(this, R.string.wallpaper_failed, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQUEST_WALLPAPER || resultCode != RESULT_OK || data == null) {
-            return;
-        }
-        Uri uri = data.getData();
-        if (uri == null) {
-            return;
-        }
-        try {
-            getContentResolver().takePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            state = new LauncherState(state.componentIds(), state.settings(), uri.toString());
-            preferences.save(state);
-            loadWallpaper();
-            Toast.makeText(this, R.string.wallpaper_saved, Toast.LENGTH_SHORT).show();
-        } catch (SecurityException failure) {
-            Toast.makeText(this, R.string.wallpaper_failed, Toast.LENGTH_SHORT).show();
-        }
+    private void refreshRandomWallpaper() {
+        wallpaperButton.setEnabled(false);
+        wallpaperButton.setText(R.string.random_wallpaper_loading);
+        final int physicalWidth = getWindowManager()
+                .getDefaultDisplay()
+                .getMode()
+                .getPhysicalWidth();
+        repositoryExecutor.execute(() -> {
+            File downloaded = null;
+            try {
+                downloaded = new RandomWallpaperClient().download(
+                        new File(getFilesDir(), "wallpapers"), physicalWidth);
+            } catch (IOException ignored) {
+                // Keep the current wallpaper when the source is unavailable.
+            }
+            final File wallpaper = downloaded;
+            mainHandler.post(() -> {
+                wallpaperButton.setEnabled(true);
+                wallpaperButton.setText(R.string.random_wallpaper);
+                if (wallpaper == null) {
+                    Toast.makeText(this, R.string.random_wallpaper_failed, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                state = new LauncherState(
+                        state.componentIds(), state.settings(), Uri.fromFile(wallpaper).toString());
+                preferences.save(state);
+                loadWallpaper();
+                Toast.makeText(this, R.string.random_wallpaper_saved, Toast.LENGTH_SHORT).show();
+            });
+        });
     }
 
     private boolean animateSwap(int from, int to, View fromView, View toView) {
