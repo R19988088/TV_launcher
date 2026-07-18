@@ -21,6 +21,20 @@ public final class WallpaperSourceTest {
     }
 
     @Test
+    public void readsLastSearchPageAndBuildsSitePageAddress() {
+        String html = "<p class=\"pages\"><strong data-page=\"1\">1</strong>"
+                + "<strong data-page=\"2\">2</strong>"
+                + "<strong data-page=\"57\">57</strong></p>";
+
+        assertEquals(57, WallpaperSource.pageCount(html));
+        assertEquals(
+                "https://4kwallpapers.com/search/Abstract?page=2",
+                WallpaperSource.searchPage("Abstract", 2));
+        assertEquals(RandomWallpaperClient.DEFAULT_SOURCE,
+                WallpaperSource.searchPage("Abstract", 1));
+    }
+
+    @Test
     public void selectsDownloadThatMatchesPhysicalDisplayWidth() {
         String html = "<a href=\"/images/wallpapers/abstract-3840x2160-1.jpg\">4K</a>"
                 + "<a href=\"/images/wallpapers/abstract-2560x1440-1.jpg\">2K</a>"
