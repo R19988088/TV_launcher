@@ -244,8 +244,8 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private void applyEntries(List<AppEntry> resolved) {
         String focusedComponentId = focusedComponentId();
         entries = new ArrayList<>(resolved);
-        adapter.replace(entries);
         configureGrid();
+        adapter.replace(entries);
         boolean empty = entries.isEmpty();
         emptyPrompt.setVisibility(empty ? View.VISIBLE : View.GONE);
         gridView.setVisibility(empty ? View.GONE : View.VISIBLE);
