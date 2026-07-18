@@ -344,17 +344,22 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private void applyEntries(List<AppEntry> resolved) {
         String focusedComponentId = focusedComponentId();
         entries = new ArrayList<>(resolved);
-        configureGrid();
         boolean empty = entries.isEmpty();
+        emptyPrompt.setVisibility(empty ? View.VISIBLE : View.GONE);
+        gridView.setVisibility(empty ? View.GONE : View.VISIBLE);
         int restoredIndex = empty ? -1 : indexOf(focusedComponentId);
         activePosition = empty ? -1 : (restoredIndex >= 0 ? restoredIndex : 0);
+        configureGrid();
         adapter.setActivePosition(activePosition);
         adapter.replace(entries);
         rebuildGrid();
-        emptyPrompt.setVisibility(empty ? View.VISIBLE : View.GONE);
-        gridView.setVisibility(empty ? View.GONE : View.VISIBLE);
         if (!empty) {
-            activatePosition(activePosition, false);
+            gridView.post(() -> {
+                if (entries.isEmpty() || isFinishing()) return;
+                configureGrid();
+                rebuildGrid();
+                activatePosition(Math.min(activePosition, entries.size() - 1), false);
+            });
         }
     }
 
