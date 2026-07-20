@@ -115,9 +115,6 @@ public final class AppCardView extends FrameLayout {
     public void setActive(boolean active, boolean animate) {
         CardVisualState state = active ? CardVisualState.focused() : CardVisualState.unfocused();
         applyVisualState(state, animate, active);
-        if (getParent() instanceof View) {
-            ((View) getParent()).invalidate();
-        }
     }
 
     public void setImageIfBound(String requestKey, String componentId, Bitmap bitmap) {
@@ -155,7 +152,6 @@ public final class AppCardView extends FrameLayout {
                 .translationZ(Math.max(0f, elevation - density))
                 .setDuration(ANIMATION_DURATION_MS)
                 .setInterpolator(active ? ACTIVE_INTERPOLATOR : FOCUS_INTERPOLATOR)
-                .withLayer()
                 .start();
         imageView.setElevation(density);
         if (active && labelView.getAlpha() == 0f) {
@@ -167,7 +163,6 @@ public final class AppCardView extends FrameLayout {
                 .setStartDelay(active ? 45L : 0L)
                 .setDuration(170L)
                 .setInterpolator(FOCUS_INTERPOLATOR)
-                .withLayer()
                 .start();
     }
 
