@@ -112,6 +112,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private TextView topRowsValue;
     private TextView clockView;
     private TextView weatherView;
+    private TextView localVersion;
     private TextView updateStatus;
     private Button updateButton;
     private TextView defaultHomeStatus;
@@ -229,6 +230,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         topRowsValue = findViewById(R.id.top_rows_value);
         clockView = findViewById(R.id.clock);
         weatherView = findViewById(R.id.weather);
+        localVersion = findViewById(R.id.local_version);
         updateStatus = findViewById(R.id.update_status);
         updateButton = findViewById(R.id.update_button);
         defaultHomeStatus = findViewById(R.id.default_home_status);
@@ -249,7 +251,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         adapter = new AppGridAdapter(this, bannerLoader, this);
         systemPackageControl = new SystemPackageControl(this);
         setupSettingsPanel();
-        updateStatus.setText(getString(R.string.current_version, currentVersion()));
+        localVersion.setText(getString(R.string.current_version, currentVersion()));
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener);
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
         gridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {

@@ -286,10 +286,18 @@
                         android:textSize="16sp" />
 
                     <TextView
-                        android:id="@+id/update_status"
+                        android:id="@+id/local_version"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/update_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
                         android:layout_marginBottom="6dp"
                         android:textColor="#CCFFFFFF"
                         android:textSize="15sp" />
