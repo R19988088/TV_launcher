@@ -61,4 +61,10 @@ public final class SystemPackageControlTest {
                 SystemPackageControl.localAdbSetHomeCommandFor(
                         "com.r19988088.tvlauncher/.LauncherActivity"));
     }
+
+    @Test
+    public void onlyUsesSetHomeActivityOnAndroidNougatOrNewer() {
+        assertEquals(false, SystemPackageControl.supportsSetHomeActivity(23));
+        assertEquals(true, SystemPackageControl.supportsSetHomeActivity(24));
+    }
 }

@@ -16,6 +16,7 @@
     <string name="default_home_active">当前已是默认桌面</string>
     <string name="default_home_inactive">当前默认桌面不是 TV Launcher</string>
     <string name="default_home_setting">正在设为默认桌面…</string>
+    <string name="default_home_select_in_system">请在系统页面选择 TV Launcher 作为默认桌面</string>
     <string name="set_default_home">设为默认桌面</string>
     <string name="reset_default_home">重新设为默认桌面</string>
     <string name="default_home_success">已设为默认桌面</string>

@@ -2,6 +2,7 @@ package com.r19988088.tvlauncher.system;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import java.io.File;
 import java.io.IOException;
 import rikka.shizuku.Shizuku;
@@ -36,6 +37,7 @@ public final class SystemPackageControl {
     }
 
     public boolean setHomeViaLocalAdb(String componentName) {
+        if (!supportsSetHomeActivity(Build.VERSION.SDK_INT)) return false;
         try {
             localAdbShell.execute(localAdbSetHomeCommandFor(componentName));
             return true;
@@ -104,6 +106,10 @@ public final class SystemPackageControl {
 
     static String localAdbSetHomeCommandFor(String componentName) {
         return "cmd package set-home-activity --user 0 " + componentName;
+    }
+
+    static boolean supportsSetHomeActivity(int sdkInt) {
+        return sdkInt >= Build.VERSION_CODES.N;
     }
 
     static String localAdbInstallCommandFor(File apk, File completionMarker) {

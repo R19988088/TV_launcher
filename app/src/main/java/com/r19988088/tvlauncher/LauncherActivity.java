@@ -865,6 +865,14 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
     private void setDefaultHome() {
         defaultHomeButton.setEnabled(false);
         defaultHomeStatus.setText(R.string.default_home_setting);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            defaultHomeStatus.setText(R.string.default_home_select_in_system);
+            defaultHomeButton.setEnabled(true);
+            if (!openSystemHomeSettings()) {
+                Toast.makeText(this, R.string.default_home_failed, Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         repositoryExecutor.execute(() -> {
             systemPackageControl.setHomeViaLocalAdb(HOME_COMPONENT);
             mainHandler.post(() -> {
@@ -901,11 +909,13 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         return current.equals(ComponentName.unflattenFromString(HOME_COMPONENT));
     }
 
-    private void openSystemHomeSettings() {
+    private boolean openSystemHomeSettings() {
         try {
             startActivity(new Intent(android.provider.Settings.ACTION_HOME_SETTINGS));
+            return true;
         } catch (ActivityNotFoundException | SecurityException ignored) {
             // Some TV firmware removes the standard HOME selection screen.
+            return false;
         }
     }
 
