@@ -152,6 +152,7 @@ public final class AppCardView extends FrameLayout {
                 .translationZ(Math.max(0f, elevation - density))
                 .setDuration(ANIMATION_DURATION_MS)
                 .setInterpolator(active ? ACTIVE_INTERPOLATOR : FOCUS_INTERPOLATOR)
+                .withLayer()
                 .start();
         imageView.setElevation(density);
         if (active && labelView.getAlpha() == 0f) {
@@ -163,6 +164,7 @@ public final class AppCardView extends FrameLayout {
                 .setStartDelay(active ? 45L : 0L)
                 .setDuration(170L)
                 .setInterpolator(FOCUS_INTERPOLATOR)
+                .withLayer()
                 .start();
     }
 
