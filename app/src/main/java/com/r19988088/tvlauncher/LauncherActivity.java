@@ -250,7 +250,6 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         systemPackageControl = new SystemPackageControl(this);
         setupSettingsPanel();
         updateStatus.setText(getString(R.string.current_version, currentVersion()));
-        applyDefaultSystemPackageControls();
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener);
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
         gridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
@@ -281,6 +280,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         super.onResume();
         activityResumed = true;
         enterImmersiveMode();
+        hideVendorStatusBar();
         discardMoveSession();
         state = preferences.load();
         configureGrid();
@@ -947,11 +947,7 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         }
         clearPendingSystemChange();
         updateSystemSwitches();
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.adb_required_title)
-                .setMessage(R.string.adb_required_message)
-                .setPositiveButton(android.R.string.ok, null)
-                .show();
+        Toast.makeText(this, R.string.system_control_failed, Toast.LENGTH_SHORT).show();
     }
 
     private void executeShizukuSystemPackageChange() {
@@ -995,17 +991,15 @@ public final class LauncherActivity extends Activity implements AppGridAdapter.L
         updatingSystemSwitches = false;
     }
 
-    private void applyDefaultSystemPackageControls() {
-        if (preferences.defaultSystemControlsApplied()) return;
-        repositoryExecutor.execute(() -> {
-            boolean applied = true;
-            for (String packageName : SystemPackageControl.defaultDisabledPackages()) {
-                applied &= systemPackageControl.setDisabledViaLocalAdb(packageName, true);
-            }
-            final boolean success = applied;
-            if (success) preferences.markDefaultSystemControlsApplied();
-            mainHandler.post(this::updateSystemSwitches);
-        });
+    private void hideVendorStatusBar() {
+        Intent command = new Intent("com.xiaomi.mitv.systemui.MiTVSystemUIService")
+                .setPackage("com.xiaomi.mitv.systemui")
+                .putExtra("show_status_bar", 0);
+        try {
+            startService(command);
+        } catch (SecurityException ignored) {
+            // Other Android TV firmware does not expose this Xiaomi-only command.
+        }
     }
 
     private void onUpdateClicked() {

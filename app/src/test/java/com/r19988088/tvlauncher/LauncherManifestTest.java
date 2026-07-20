@@ -9,6 +9,20 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 public final class LauncherManifestTest {
+    private static final String VENDOR_SYSTEM_UI_PERMISSION =
+            "com.xiaomi.mitv.systemui.MiTVSystemUIService.SEND_COMMAND";
+
+    @Test
+    public void requestsVendorSystemUiCommandPermission() throws Exception {
+        Element manifest = DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new File("src/main/AndroidManifest.xml"))
+                .getDocumentElement();
+
+        assertTrue("TV Launcher must be allowed to hide the vendor status bar",
+                hasPermission(manifest, VENDOR_SYSTEM_UI_PERMISSION));
+    }
+
     @Test
     public void homeAndLeanbackEntriesUseSeparateIntentFilters() throws Exception {
         File manifest = new File("src/main/AndroidManifest.xml");
@@ -40,6 +54,15 @@ public final class LauncherManifestTest {
         for (int index = 0; index < categories.getLength(); index++) {
             Element category = (Element) categories.item(index);
             if (categoryName.equals(category.getAttribute("android:name"))) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasPermission(Element manifest, String permissionName) {
+        NodeList permissions = manifest.getElementsByTagName("uses-permission");
+        for (int index = 0; index < permissions.getLength(); index++) {
+            Element permission = (Element) permissions.item(index);
+            if (permissionName.equals(permission.getAttribute("android:name"))) return true;
         }
         return false;
     }
